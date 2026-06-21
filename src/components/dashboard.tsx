@@ -120,7 +120,7 @@ function DashboardHeader() {
             <p className="mt-1 text-sm text-white/85">{user.email}</p>
             <p className="mt-0.5 text-xs text-white/70">
               Joined {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-              {user.role === 'candidate' && ` · ${completedLessons.length} lessons completed · ${user.enrolledCourseIds.length} courses enrolled`}
+              {user.role === 'candidate' && ` · ${completedLessons.length} lessons completed · ${user.enrolledCourseIds?.length ?? 0} courses enrolled`}
               {user.role === 'tutor' && user.tutorProfile && ` · ${user.tutorProfile.sessionsCompleted} sessions · ★ ${user.tutorProfile.rating}`}
               {user.role === 'super_admin' && ' · Full platform access'}
             </p>
@@ -190,18 +190,21 @@ function CandidateDashboard() {
 }
 
 function CandidateQuickStats() {
-  const user = useAppStore((s) => s.currentUser())!;
+  const user = useAppStore((s) => s.currentUser());
   const completedLessons = useAppStore((s) => s.completedLessons);
   const myBadges = useAppStore((s) => s.myBadges());
   const myCerts = useAppStore((s) => s.myCertificates());
-  const upcoming = useAppStore((s) => s.bookings).filter((b) => b.candidateId === user.id && b.status === 'upcoming');
+  const bookings = useAppStore((s) => s.bookings);
+  if (!user) return null;
+  const enrolledCourseIds = user.enrolledCourseIds ?? [];
+  const upcoming = bookings.filter((b) => b.candidateId === user.id && b.status === 'upcoming');
 
   // compute total lessons across enrolled courses
-  const totalLessons = user.enrolledCourseIds.reduce((sum, cid) => sum + getAllLessons(cid).length, 0);
+  const totalLessons = enrolledCourseIds.reduce((sum, cid) => sum + getAllLessons(cid).length, 0);
   const completionPct = totalLessons ? Math.round((completedLessons.length / totalLessons) * 100) : 0;
 
   const stats = [
-    { label: 'Courses', value: user.enrolledCourseIds.length, icon: BookOpen },
+    { label: 'Courses', value: enrolledCourseIds.length, icon: BookOpen },
     { label: 'Lessons done', value: completedLessons.length, icon: CheckCircle2 },
     { label: 'Badges', value: myBadges.length, icon: Trophy },
     { label: 'Certificates', value: myCerts.length, icon: Award },
@@ -241,12 +244,14 @@ function QuickAction({ icon: Icon, label, desc, color, onClick }: {
 }
 
 function CoursesInProgressPanel() {
-  const user = useAppStore((s) => s.currentUser())!;
+  const user = useAppStore((s) => s.currentUser());
   const completedLessons = useAppStore((s) => s.completedLessons);
   const openLesson = useAppStore((s) => s.openLesson);
   const openCourse = useAppStore((s) => s.openCourse);
 
-  const enrolled = COURSES.filter((c) => user.enrolledCourseIds.includes(c.id));
+  if (!user) return null;
+  const enrolledCourseIds = user.enrolledCourseIds ?? [];
+  const enrolled = COURSES.filter((c) => enrolledCourseIds.includes(c.id));
 
   if (enrolled.length === 0) {
     return (
@@ -314,9 +319,10 @@ function CoursesInProgressPanel() {
 }
 
 function UpcomingSessionsPanel() {
-  const user = useAppStore((s) => s.currentUser())!;
+  const user = useAppStore((s) => s.currentUser());
   const bookings = useAppStore((s) => s.bookings);
   const users = useAppStore((s) => s.users);
+  if (!user) return null;
   const myBookings = bookings.filter((b) => b.candidateId === user.id && b.status === 'upcoming');
 
   return (
@@ -360,12 +366,14 @@ function UpcomingSessionsPanel() {
 }
 
 function AssignmentsPanel() {
-  const user = useAppStore((s) => s.currentUser())!;
+  const user = useAppStore((s) => s.currentUser());
   const assignments = useAppStore((s) => s.assignments);
 
+  if (!user) return null;
+  const enrolledCourseIds = user.enrolledCourseIds ?? [];
   const myAssignments = assignments.filter((a) => {
     // show assignments for courses the user is enrolled in
-    return user.enrolledCourseIds.includes(a.courseId);
+    return enrolledCourseIds.includes(a.courseId);
   }).slice(0, 3);
 
   if (myAssignments.length === 0) return null;
@@ -378,7 +386,7 @@ function AssignmentsPanel() {
       <CardContent className="space-y-2">
         {myAssignments.map((a) => {
           const c = findCourse(a.courseId);
-          const sub = a.submissions[user.id];
+          const sub = a.submissions?.[user.id];
           const status = sub?.status ?? 'pending';
           const statusColor =
             status === 'graded' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
@@ -490,9 +498,11 @@ function MiniAchievementsPanel() {
 }
 
 function RecommendationsPanel() {
-  const user = useAppStore((s) => s.currentUser())!;
+  const user = useAppStore((s) => s.currentUser());
   const openCourse = useAppStore((s) => s.openCourse);
-  const recommended = COURSES.filter((c) => !user.enrolledCourseIds.includes(c.id)).slice(0, 3);
+  if (!user) return null;
+  const enrolledCourseIds = user.enrolledCourseIds ?? [];
+  const recommended = COURSES.filter((c) => !enrolledCourseIds.includes(c.id)).slice(0, 3);
 
   return (
     <Card>
@@ -546,8 +556,9 @@ function TutorDashboard() {
 }
 
 function TutorQuickStats() {
-  const user = useAppStore((s) => s.currentUser())!;
+  const user = useAppStore((s) => s.currentUser());
   const bookings = useAppStore((s) => s.bookings);
+  if (!user) return null;
   const myUpcoming = bookings.filter((b) => b.tutorId === user.id && b.status === 'upcoming');
   const myCompleted = bookings.filter((b) => b.tutorId === user.id && b.status === 'completed');
   const myStudents = new Set(bookings.filter((b) => b.tutorId === user.id).map((b) => b.candidateId));
@@ -576,9 +587,10 @@ function TutorQuickStats() {
 }
 
 function TutorSessionsPanel() {
-  const user = useAppStore((s) => s.currentUser())!;
+  const user = useAppStore((s) => s.currentUser());
   const bookings = useAppStore((s) => s.bookings);
   const users = useAppStore((s) => s.users);
+  if (!user) return null;
   const myUpcoming = bookings.filter((b) => b.tutorId === user.id && b.status === 'upcoming').slice(0, 5);
 
   return (
@@ -618,9 +630,10 @@ function TutorSessionsPanel() {
 }
 
 function TutorStudentsPanel() {
-  const user = useAppStore((s) => s.currentUser())!;
+  const user = useAppStore((s) => s.currentUser());
   const bookings = useAppStore((s) => s.bookings);
   const users = useAppStore((s) => s.users);
+  if (!user) return null;
   const myBookings = bookings.filter((b) => b.tutorId === user.id);
   const studentIds = Array.from(new Set(myBookings.map((b) => b.candidateId)));
   const students = users.filter((u) => studentIds.includes(u.id)).slice(0, 6);
@@ -658,8 +671,9 @@ function TutorStudentsPanel() {
 }
 
 function TutorEarningsPanel() {
-  const user = useAppStore((s) => s.currentUser())!;
+  const user = useAppStore((s) => s.currentUser());
   const bookings = useAppStore((s) => s.bookings);
+  if (!user) return null;
   const completed = bookings.filter((b) => b.tutorId === user.id && b.status === 'completed');
   const tp = user.tutorProfile;
   const feePct = tp?.paymentTerms.platformFeePct ?? 20;
@@ -693,12 +707,13 @@ function TutorEarningsPanel() {
 }
 
 function TutorProfilePanel() {
-  const user = useAppStore((s) => s.currentUser())!;
+  const user = useAppStore((s) => s.currentUser());
+  if (!user) return null;
   const tp = user.tutorProfile;
   if (!tp) return null;
 
   const completeness = [
-    !!tp.headline, !!tp.bio, tp.expertise.length > 0, tp.hourlyRate > 0, user.enrolledCourseIds.length > 0,
+    !!tp.headline, !!tp.bio, (tp.expertise?.length ?? 0) > 0, tp.hourlyRate > 0, (user.enrolledCourseIds?.length ?? 0) > 0,
   ].filter(Boolean).length;
   const pct = Math.round((completeness / 5) * 100);
 

@@ -149,7 +149,7 @@ export function LessonView({ courseId, moduleId, lessonId }: { courseId: string;
                 controls
                 playsInline
                 preload="metadata"
-                crossOrigin="anonymous"
+                controlsList="nodownload noremoteplayback"
                 className="h-full w-full"
                 onError={(e) => {
                   const el = e.currentTarget;

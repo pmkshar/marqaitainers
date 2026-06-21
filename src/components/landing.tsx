@@ -34,7 +34,7 @@ export function Hero() {
               Marq<span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">AI</span> — your complete software tutor
             </h1>
             <p className="max-w-xl text-lg text-muted-foreground text-pretty">
-              Learn AI/ML, Full Stack Java, .NET, Mobile App Development, and Flutter with step-wise lessons, video walkthroughs, graded tests, an AI tutor available 24/7, and vetted human tutors for 1:1 sessions.
+              Learn AI/ML, Full Stack Java, .NET, Mobile App Development, Flutter, and Python with step-wise lessons, video walkthroughs, graded tests, an AI tutor available 24/7, and vetted human tutors for 1:1 sessions.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               {!user && (
@@ -54,7 +54,7 @@ export function Hero() {
               </Button>
             </div>
             <div className="grid grid-cols-4 gap-3 pt-4">
-              <Stat value="5" label="Career Tracks" />
+              <Stat value="6" label="Career Tracks" />
               <Stat value="100+" label="Lessons" />
               <Stat value="5+" label="Human Tutors" />
               <Stat value="24/7" label="AI Tutor" />
@@ -153,7 +153,7 @@ export function CourseGrid() {
           <div>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Explore our courses</h2>
             <p className="mt-2 max-w-xl text-muted-foreground">
-              Five on-demand career tracks. Buy individually, or subscribe for all-access.
+              Six on-demand career tracks. Buy individually, or subscribe for all-access.
             </p>
           </div>
         </div>

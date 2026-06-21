@@ -1138,7 +1138,18 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'marq-ai-storage',
+      version: 3,
       storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : (undefined as never))),
+      // Drop any persisted state from an older schema version. This prevents
+      // crashes when the seeded data shape changes (e.g. new fields like
+      // `enrolledCourseIds`, `tutorProfile`, `categoryIds`, etc.).
+      migrate: (_persistedState, version) => {
+        if (version < 3) {
+          // Returning the seed-state shape triggers a fresh re-init.
+          return {} as Partial<AppState>;
+        }
+        return (_persistedState as Partial<AppState>) ?? {};
+      },
       partialize: (s) => ({
         completedLessons: s.completedLessons,
         chatMessages: s.chatMessages.slice(-20),
@@ -1166,6 +1177,34 @@ export const useAppStore = create<AppState>()(
         analyticsEvents: s.analyticsEvents.slice(0, 2000),
         gdprBundles: s.gdprBundles,
       }),
+      // Defensive merge — never let a corrupted persisted state crash the app
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<AppState>;
+        return {
+          ...current,
+          ...p,
+          // Always ensure critical arrays exist (defensive against partial persistence)
+          users: Array.isArray(p.users) && p.users.length > 0 ? p.users : current.users,
+          roles: Array.isArray(p.roles) && p.roles.length > 0 ? p.roles : current.roles,
+          bookings: Array.isArray(p.bookings) ? p.bookings : current.bookings,
+          integrations: Array.isArray(p.integrations) ? p.integrations : current.integrations,
+          auditLogs: Array.isArray(p.auditLogs) ? p.auditLogs : current.auditLogs,
+          notifications: Array.isArray(p.notifications) ? p.notifications : current.notifications,
+          activities: Array.isArray(p.activities) ? p.activities : current.activities,
+          certificates: Array.isArray(p.certificates) ? p.certificates : current.certificates,
+          userBadges: Array.isArray(p.userBadges) ? p.userBadges : current.userBadges,
+          notes: Array.isArray(p.notes) ? p.notes : current.notes,
+          discussions: Array.isArray(p.discussions) ? p.discussions : current.discussions,
+          announcements: Array.isArray(p.announcements) ? p.announcements : current.announcements,
+          assignments: Array.isArray(p.assignments) ? p.assignments : current.assignments,
+          groups: Array.isArray(p.groups) ? p.groups : current.groups,
+          messages: Array.isArray(p.messages) ? p.messages : current.messages,
+          calendarEvents: Array.isArray(p.calendarEvents) ? p.calendarEvents : current.calendarEvents,
+          friendships: Array.isArray(p.friendships) ? p.friendships : current.friendships,
+          completedLessons: Array.isArray(p.completedLessons) ? p.completedLessons : [],
+          chatMessages: Array.isArray(p.chatMessages) ? p.chatMessages : [],
+        };
+      },
     }
   )
 );
