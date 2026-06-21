@@ -64,3 +64,29 @@ Stage Summary:
 - The script handles BOTH the main repo push AND the wiki repo push in one command.
 - If the wiki repo doesn't exist yet, the user must first visit https://github.com/pmkshar/marqaitainers/wiki and click "Create the first page" to initialize it.
 - Documentation set covers all 4 requested categories: technical (architecture, API, DB schema, deployment), role-wise SOPs (5 roles), module-wise SOPs (18 modules), complete requirements (PRD with 100+ FRs).
+
+---
+Task ID: github-push-attempt-2
+Agent: main (Super Z)
+Task: User explicitly requested code push to GitHub + Vercel link creation
+
+Work Log:
+- Verified codebase state: clean working tree on `main`, 138 tracked files, 3 commits ready (078642c Vercel-ready, 76751cd main feature commit, b1d91c3 DEPLOY.md).
+- Made project Vercel-ready:
+  * Renamed package.json from `nextjs_tailwind_shadcn_ts` → `marq-ai-software-tutor`
+  * Split `build` script: plain `next build` (Vercel default) + `build:standalone` (Docker)
+  * Split `start` script: `next start` (Vercel/runtime) + `start:standalone` (Docker/bun)
+  * Created `vercel.json` (framework=nextjs, install=bun, bom1 region, PWA headers)
+- Verified `bun run build` compiles cleanly (Next.js 16.1.3 Turbopack, 7.3s, 5 routes).
+- Created `DEPLOY.md` with 4-step guide: GitHub push (3 options), wiki push, Vercel deploy (dashboard + CLI), continuous deployment.
+- Attempted `git push -u origin main` — FAILED: `fatal: could not read Username for 'https://github.com'`. The sandbox has no GitHub credentials (no gh CLI, no SSH key, no PAT, no credential helper).
+- Bundled entire project (excluding node_modules, .next, .git, logs, DB) as `download/marq-ai-software-tutor.tar.gz` (386KB, 155 files) so user can download + push from their own machine.
+
+Stage Summary:
+- Code + docs + Vercel config all ready locally. Build verified.
+- BLOCKER: Cannot push to GitHub without credentials. User must either:
+  (a) share a PAT (I'll push from this session), OR
+  (b) download the tarball + run `./scripts/push-to-github.sh` from their machine, OR
+  (c) clone/copy + push from their own machine.
+- Vercel deployment cannot be created from this sandbox either (no Vercel CLI auth) — once the GitHub repo is populated, user imports it at https://vercel.com/new (auto-detects Next.js, ~60s build).
+- Deliverable: `/home/z/my-project/download/marq-ai-software-tutor.tar.gz` (386KB)
