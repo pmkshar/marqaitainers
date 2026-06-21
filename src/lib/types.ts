@@ -287,6 +287,124 @@ export interface AuditLog {
 }
 
 // ============================================================
+// Advanced WPLMS-parity: Certificate Builder, Custom Registration
+// Forms, Email Scheduling, Deep Analytics, GDPR export bundles
+// ============================================================
+
+export interface CertificateTemplate {
+  id: string;
+  name: string;
+  // canvas elements positioned in percentages (0-100)
+  elements: CertificateElement[];
+  background: string;   // gradient or color
+  borderColor: string;
+  width: number;        // px (render scale)
+  height: number;       // px
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type CertificateElementType =
+  | 'title' | 'subtitle' | 'recipient_name' | 'course_name'
+  | 'score' | 'date' | 'code' | 'signature' | 'logo' | 'static_text';
+
+export interface CertificateElement {
+  id: string;
+  type: CertificateElementType;
+  x: number;            // 0-100 (percent)
+  y: number;            // 0-100 (percent)
+  w: number;            // 0-100 (percent)
+  fontSize: number;
+  fontWeight: 400 | 500 | 600 | 700;
+  color: string;
+  text?: string;        // for static_text / signature label
+  align: 'left' | 'center' | 'right';
+}
+
+export type RegistrationFieldKind =
+  | 'text' | 'email' | 'password' | 'select' | 'checkbox'
+  | 'radio' | 'textarea' | 'date' | 'tel' | 'number';
+
+export interface RegistrationFormField {
+  id: string;
+  kind: RegistrationFieldKind;
+  label: string;
+  placeholder?: string;
+  required: boolean;
+  options?: string[];   // for select / radio / checkbox
+  helpText?: string;
+  width: 'half' | 'full';
+}
+
+export interface RegistrationFormConfig {
+  id: string;
+  role: RoleKey;
+  name: string;
+  fields: RegistrationFormField[];
+  requireEmailVerification: boolean;
+  requireCaptcha: boolean;
+  requireTosAccept: boolean;
+  updatedAt: number;
+}
+
+export type EmailScheduleKind =
+  | 'welcome' | 'drip_unlock' | 'expiry_reminder'
+  | 'inactivity' | 'session_reminder' | 'certificate_issued'
+  | 'assignment_due' | 'weekly_progress';
+
+export interface EmailSchedule {
+  id: string;
+  kind: EmailScheduleKind;
+  name: string;
+  trigger: string;          // human-readable trigger description
+  delayHours: number;       // hours after the trigger event (0 = immediate)
+  subject: string;
+  bodyTemplate: string;     // markdown template with {{vars}}
+  enabled: boolean;
+  updatedAt: number;
+}
+
+export type AnalyticsEventKind =
+  | 'page_view' | 'lesson_started' | 'lesson_completed'
+  | 'quiz_attempted' | 'quiz_passed' | 'course_enrolled'
+  | 'course_completed' | 'tutor_session_booked' | 'payment_completed'
+  | 'certificate_earned' | 'signup' | 'login' | 'ai_tutor_message';
+
+export interface AnalyticsEvent {
+  id: string;
+  kind: AnalyticsEventKind;
+  userId?: string;
+  courseId?: string;
+  lessonId?: string;
+  value?: number;             // e.g. quiz score pct, payment amount
+  meta?: Record<string, string | number>;
+  ts: number;                 // event timestamp
+}
+
+export interface AnalyticsSummary {
+  totalUsers: number;
+  activeUsers7d: number;
+  enrollments30d: number;
+  courseCompletions30d: number;
+  revenue30d: number;
+  avgQuizScore: number;
+  // weekly time-series buckets (oldest -> newest)
+  enrollmentsSeries: { ts: number; count: number }[];
+  revenueSeries: { ts: number; amount: number }[];
+  topCourses: { courseId: string; enrollments: number; completions: number; revenue: number }[];
+  funnel: { stage: string; count: number; pct: number }[];
+}
+
+export interface GdprExportBundle {
+  id: string;
+  userId: string;
+  requestedAt: number;
+  status: 'pending' | 'ready' | 'expired';
+  downloadUrl?: string;
+  expiresAt: number;
+}
+
+// ============================================================
 // Existing learning content types (kept from before)
 // ============================================================
 
@@ -390,7 +508,12 @@ export type AdminTab =
   | 'tutors'
   | 'integrations'
   | 'roles'
-  | 'audit';
+  | 'audit'
+  | 'certificate_builder'
+  | 'registration_forms'
+  | 'email_scheduling'
+  | 'analytics'
+  | 'gdpr';
 
 export type TutorTab =
   | 'overview'

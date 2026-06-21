@@ -6,6 +6,9 @@ import type {
   AppNotification, ActivityEntry, Certificate, Badge, UserBadge,
   LessonNote, DiscussionPost, Announcement, Assignment,
   CourseCategory, CourseBundle, Group, DirectMessage, CalendarEvent, Friendship,
+  CertificateTemplate, CertificateElement,
+  RegistrationFormConfig, RegistrationFormField,
+  EmailSchedule, AnalyticsEvent, AnalyticsSummary, GdprExportBundle,
 } from '@/lib/types';
 import {
   SEED_USERS, SEED_BOOKINGS, SEED_INTEGRATIONS, DEFAULT_ROLES, SEED_AUDIT_LOGS,
@@ -16,6 +19,10 @@ import {
   SEED_DISCUSSIONS, SEED_ANNOUNCEMENTS, SEED_ASSIGNMENTS, SEED_GROUPS,
   SEED_MESSAGES, SEED_CALENDAR_EVENTS, SEED_FRIENDSHIPS,
 } from '@/lib/seed-social';
+import {
+  SEED_CERT_TEMPLATES, SEED_REG_FORMS, SEED_EMAIL_SCHEDULES,
+  SEED_ANALYTICS_EVENTS, SEED_GDPR_BUNDLES,
+} from '@/lib/seed-advanced';
 
 interface AppState {
   // Navigation
@@ -56,6 +63,13 @@ interface AppState {
   messages: DirectMessage[];
   calendarEvents: CalendarEvent[];
   friendships: Friendship[];
+
+  // ---- advanced WPLMS-parity ----
+  certTemplates: CertificateTemplate[];
+  registrationForms: RegistrationFormConfig[];
+  emailSchedules: EmailSchedule[];
+  analyticsEvents: AnalyticsEvent[];
+  gdprBundles: GdprExportBundle[];
 
   // ---- selectors ----
   currentUser: () => User | null;
@@ -169,6 +183,32 @@ interface AppState {
   acceptFriend: (friendId: string) => void;
   joinGroup: (groupId: string) => void;
   leaveGroup: (groupId: string) => void;
+
+  // ---- advanced: certificate builder ----
+  addCertTemplate: (tpl: Omit<CertificateTemplate, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateCertTemplate: (id: string, patch: Partial<CertificateTemplate>) => void;
+  deleteCertTemplate: (id: string) => void;
+  addCertElement: (tplId: string, element: Omit<CertificateElement, 'id'>) => void;
+  updateCertElement: (tplId: string, elementId: string, patch: Partial<CertificateElement>) => void;
+  deleteCertElement: (tplId: string, elementId: string) => void;
+
+  // ---- advanced: registration forms ----
+  updateRegistrationForm: (id: string, patch: Partial<RegistrationFormConfig>) => void;
+  addRegField: (formId: string, field: Omit<RegistrationFormField, 'id'>) => void;
+  updateRegField: (formId: string, fieldId: string, patch: Partial<RegistrationFormField>) => void;
+  deleteRegField: (formId: string, fieldId: string) => void;
+
+  // ---- advanced: email schedules ----
+  updateEmailSchedule: (id: string, patch: Partial<EmailSchedule>) => void;
+  toggleEmailSchedule: (id: string) => void;
+
+  // ---- advanced: analytics ----
+  trackEvent: (e: Omit<AnalyticsEvent, 'id' | 'ts'>) => void;
+  analyticsSummary: () => AnalyticsSummary;
+
+  // ---- advanced: GDPR ----
+  requestGdprExport: (userId: string) => void;
+  gdprBundlesFor: (userId: string) => GdprExportBundle[];
 }
 
 const AVATAR_COLORS = [
@@ -221,6 +261,13 @@ export const useAppStore = create<AppState>()(
       messages: SEED_MESSAGES,
       calendarEvents: SEED_CALENDAR_EVENTS,
       friendships: SEED_FRIENDSHIPS,
+
+      // advanced
+      certTemplates: SEED_CERT_TEMPLATES,
+      registrationForms: SEED_REG_FORMS,
+      emailSchedules: SEED_EMAIL_SCHEDULES,
+      analyticsEvents: SEED_ANALYTICS_EVENTS,
+      gdprBundles: SEED_GDPR_BUNDLES,
 
       currentUser: () => {
         const id = get().currentUserId;
@@ -895,6 +942,199 @@ export const useAppStore = create<AppState>()(
           ),
         }));
       },
+
+      // ---------- advanced: certificate builder ----------
+      addCertTemplate: (tpl) => {
+        const id = `tpl-${Date.now()}`;
+        const now2 = Date.now();
+        set((s) => ({
+          certTemplates: [...s.certTemplates, { ...tpl, id, createdAt: now2, updatedAt: now2 }],
+        }));
+        get().logAction('Created certificate template', tpl.name);
+      },
+      updateCertTemplate: (id, patch) => {
+        set((s) => ({
+          certTemplates: s.certTemplates.map((t) =>
+            t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t
+          ),
+        }));
+      },
+      deleteCertTemplate: (id) => {
+        set((s) => ({ certTemplates: s.certTemplates.filter((t) => t.id !== id) }));
+        get().logAction('Deleted certificate template', id);
+      },
+      addCertElement: (tplId, element) => {
+        const id = `el-${Date.now()}`;
+        set((s) => ({
+          certTemplates: s.certTemplates.map((t) =>
+            t.id === tplId
+              ? { ...t, elements: [...t.elements, { ...element, id }], updatedAt: Date.now() }
+              : t
+          ),
+        }));
+      },
+      updateCertElement: (tplId, elementId, patch) => {
+        set((s) => ({
+          certTemplates: s.certTemplates.map((t) =>
+            t.id === tplId
+              ? {
+                  ...t,
+                  updatedAt: Date.now(),
+                  elements: t.elements.map((e) => (e.id === elementId ? { ...e, ...patch } : e)),
+                }
+              : t
+          ),
+        }));
+      },
+      deleteCertElement: (tplId, elementId) => {
+        set((s) => ({
+          certTemplates: s.certTemplates.map((t) =>
+            t.id === tplId
+              ? { ...t, updatedAt: Date.now(), elements: t.elements.filter((e) => e.id !== elementId) }
+              : t
+          ),
+        }));
+      },
+
+      // ---------- advanced: registration forms ----------
+      updateRegistrationForm: (id, patch) => {
+        set((s) => ({
+          registrationForms: s.registrationForms.map((f) =>
+            f.id === id ? { ...f, ...patch, updatedAt: Date.now() } : f
+          ),
+        }));
+        get().logAction('Updated registration form', id);
+      },
+      addRegField: (formId, field) => {
+        const id = `f-${Date.now()}`;
+        set((s) => ({
+          registrationForms: s.registrationForms.map((f) =>
+            f.id === formId
+              ? { ...f, updatedAt: Date.now(), fields: [...f.fields, { ...field, id }] }
+              : f
+          ),
+        }));
+      },
+      updateRegField: (formId, fieldId, patch) => {
+        set((s) => ({
+          registrationForms: s.registrationForms.map((f) =>
+            f.id === formId
+              ? {
+                  ...f,
+                  updatedAt: Date.now(),
+                  fields: f.fields.map((fld) => (fld.id === fieldId ? { ...fld, ...patch } : fld)),
+                }
+              : f
+          ),
+        }));
+      },
+      deleteRegField: (formId, fieldId) => {
+        set((s) => ({
+          registrationForms: s.registrationForms.map((f) =>
+            f.id === formId
+              ? { ...f, updatedAt: Date.now(), fields: f.fields.filter((fld) => fld.id !== fieldId) }
+              : f
+          ),
+        }));
+      },
+
+      // ---------- advanced: email schedules ----------
+      updateEmailSchedule: (id, patch) => {
+        set((s) => ({
+          emailSchedules: s.emailSchedules.map((e) =>
+            e.id === id ? { ...e, ...patch, updatedAt: Date.now() } : e
+          ),
+        }));
+        get().logAction('Updated email schedule', id);
+      },
+      toggleEmailSchedule: (id) => {
+        set((s) => ({
+          emailSchedules: s.emailSchedules.map((e) =>
+            e.id === id ? { ...e, enabled: !e.enabled, updatedAt: Date.now() } : e
+          ),
+        }));
+      },
+
+      // ---------- advanced: analytics ----------
+      trackEvent: (e) => {
+        const event: AnalyticsEvent = { ...e, id: `ev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ts: Date.now() };
+        set((s) => ({ analyticsEvents: [event, ...s.analyticsEvents].slice(0, 5000) }));
+      },
+      analyticsSummary: () => {
+        const events = get().analyticsEvents;
+        const now2 = Date.now();
+        const dayMs = 24 * 60 * 60 * 1000;
+        const users = get().users;
+        const totalUsers = users.length;
+        const active7d = new Set(
+          events.filter((e) => e.ts > now2 - 7 * dayMs && e.userId).map((e) => e.userId!)
+        ).size;
+        const enrollments30d = events.filter((e) => e.kind === 'course_enrolled' && e.ts > now2 - 30 * dayMs).length;
+        const completions30d = events.filter((e) => e.kind === 'course_completed' && e.ts > now2 - 30 * dayMs).length;
+        const revenue30d = events
+          .filter((e) => e.kind === 'payment_completed' && e.ts > now2 - 30 * dayMs)
+          .reduce((sum, e) => sum + (e.value ?? 0), 0);
+        const quizScores = events.filter((e) => e.kind === 'quiz_passed' && typeof e.value === 'number').map((e) => e.value!);
+        const avgQuizScore = quizScores.length ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length) : 0;
+
+        // 8-week series
+        const enrollmentsSeries: { ts: number; count: number }[] = [];
+        const revenueSeries: { ts: number; amount: number }[] = [];
+        for (let w = 7; w >= 0; w--) {
+          const start = now2 - (w + 1) * 7 * dayMs;
+          const end = now2 - w * 7 * dayMs;
+          const weekEvents = events.filter((e) => e.ts >= start && e.ts < end);
+          enrollmentsSeries.push({ ts: end, count: weekEvents.filter((e) => e.kind === 'course_enrolled').length });
+          revenueSeries.push({
+            ts: end,
+            amount: weekEvents.filter((e) => e.kind === 'payment_completed').reduce((s, e) => s + (e.value ?? 0), 0),
+          });
+        }
+
+        // top courses
+        const courseIdSet = new Set(events.filter((e) => e.courseId).map((e) => e.courseId!));
+        const topCourses = Array.from(courseIdSet).map((cid) => {
+          const courseEvents = events.filter((e) => e.courseId === cid);
+          return {
+            courseId: cid,
+            enrollments: courseEvents.filter((e) => e.kind === 'course_enrolled').length,
+            completions: courseEvents.filter((e) => e.kind === 'course_completed').length,
+            revenue: courseEvents.filter((e) => e.kind === 'payment_completed').reduce((s, e) => s + (e.value ?? 0), 0),
+          };
+        }).sort((a, b) => b.enrollments - a.enrollments).slice(0, 5);
+
+        // funnel
+        const signups = events.filter((e) => e.kind === 'signup').length;
+        const enrolled = events.filter((e) => e.kind === 'course_enrolled').length;
+        const completedLessons = events.filter((e) => e.kind === 'lesson_completed').length;
+        const certs = events.filter((e) => e.kind === 'certificate_earned').length;
+        const funnel = [
+          { stage: 'Signups', count: signups, pct: 100 },
+          { stage: 'Enrolled', count: enrolled, pct: signups ? Math.round((enrolled / signups) * 100) : 0 },
+          { stage: 'Lessons completed', count: completedLessons, pct: signups ? Math.round((completedLessons / signups) * 100) : 0 },
+          { stage: 'Certificates earned', count: certs, pct: signups ? Math.round((certs / signups) * 100) : 0 },
+        ];
+
+        return {
+          totalUsers, activeUsers7d: active7d, enrollments30d, courseCompletions30d: completions30d,
+          revenue30d, avgQuizScore,
+          enrollmentsSeries, revenueSeries, topCourses, funnel,
+        };
+      },
+
+      // ---------- advanced: GDPR ----------
+      requestGdprExport: (userId) => {
+        const id = `gb-${Date.now()}`;
+        const now2 = Date.now();
+        set((s) => ({
+          gdprBundles: [
+            { id, userId, requestedAt: now2, status: 'pending', expiresAt: now2 + 30 * 24 * 60 * 60 * 1000 },
+            ...s.gdprBundles,
+          ],
+        }));
+        get().logAction('Requested GDPR export', userId);
+      },
+      gdprBundlesFor: (userId) => get().gdprBundles.filter((b) => b.userId === userId),
     }),
     {
       name: 'marq-ai-storage',
@@ -920,6 +1160,11 @@ export const useAppStore = create<AppState>()(
         messages: s.messages.slice(-200),
         calendarEvents: s.calendarEvents,
         friendships: s.friendships,
+        certTemplates: s.certTemplates,
+        registrationForms: s.registrationForms,
+        emailSchedules: s.emailSchedules,
+        analyticsEvents: s.analyticsEvents.slice(0, 2000),
+        gdprBundles: s.gdprBundles,
       }),
     }
   )

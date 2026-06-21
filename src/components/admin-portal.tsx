@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   ArrowLeft, ShieldCheck, Users, BookOpen, CreditCard, Plug, KeyRound, ScrollText,
   LayoutDashboard, Check, X, Trash2, Edit3, Save, Plus, TrendingUp, DollarSign,
-  Star, Clock, UserCheck, AlertTriangle,
+  Star, Clock, UserCheck, AlertTriangle, Award, FileText, Mail, BarChart3, Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +19,10 @@ import { useAppStore } from '@/lib/store';
 import { COURSES } from '@/lib/courses';
 import { ALL_PERMISSIONS } from '@/lib/seed-data';
 import { CourseIcon } from './navbar';
+import {
+  CertificateBuilderTab, RegistrationFormsTab, EmailSchedulingTab,
+  AnalyticsTab, GdprTab,
+} from './advanced-portal';
 import type { AdminTab, RoleKey, PermissionKey, Role, User, Integration } from '@/lib/types';
 
 const TABS: { key: AdminTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -30,6 +34,11 @@ const TABS: { key: AdminTab; label: string; icon: React.ComponentType<{ classNam
   { key: 'integrations', label: 'Integrations', icon: Plug },
   { key: 'roles', label: 'Roles & Permissions', icon: KeyRound },
   { key: 'audit', label: 'Audit Log', icon: ScrollText },
+  { key: 'certificate_builder', label: 'Certificate Builder', icon: Award },
+  { key: 'registration_forms', label: 'Registration Forms', icon: FileText },
+  { key: 'email_scheduling', label: 'Email Scheduling', icon: Mail },
+  { key: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { key: 'gdpr', label: 'GDPR', icon: Lock },
 ];
 
 export function AdminPortal() {
@@ -82,11 +91,11 @@ export function AdminPortal() {
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as AdminTab)} className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 h-auto">
+            <TabsList className="grid h-auto w-full grid-cols-4 lg:grid-cols-[repeat(13,minmax(0,1fr))]">
               {TABS.map((t) => (
                 <TabsTrigger key={t.key} value={t.key} className="flex flex-col gap-1 py-2 text-[11px] sm:flex-row sm:text-sm">
                   <t.icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t.label.split(' ')[0]}</span>
+                  <span className="hidden lg:inline">{t.label.split(' ')[0]}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -100,6 +109,11 @@ export function AdminPortal() {
           <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
           <TabsContent value="roles"><RolesTab /></TabsContent>
           <TabsContent value="audit"><AuditTab /></TabsContent>
+          <TabsContent value="certificate_builder"><CertificateBuilderTab /></TabsContent>
+          <TabsContent value="registration_forms"><RegistrationFormsTab /></TabsContent>
+          <TabsContent value="email_scheduling"><EmailSchedulingTab /></TabsContent>
+          <TabsContent value="analytics"><AnalyticsTab /></TabsContent>
+          <TabsContent value="gdpr"><GdprTab /></TabsContent>
         </Tabs>
       </section>
     </div>
