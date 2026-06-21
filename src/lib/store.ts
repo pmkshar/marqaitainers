@@ -1,7 +1,21 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { View, ChatMessage, User, Role, Integration, Booking, PermissionKey, RoleKey, TutorProfile, AuditLog } from '@/lib/types';
-import { SEED_USERS, SEED_BOOKINGS, SEED_INTEGRATIONS, DEFAULT_ROLES, SEED_AUDIT_LOGS } from '@/lib/seed-data';
+import type {
+  View, ChatMessage, User, Role, Integration, Booking, PermissionKey, RoleKey,
+  TutorProfile, AuditLog,
+  AppNotification, ActivityEntry, Certificate, Badge, UserBadge,
+  LessonNote, DiscussionPost, Announcement, Assignment,
+  CourseCategory, CourseBundle, Group, DirectMessage, CalendarEvent, Friendship,
+} from '@/lib/types';
+import {
+  SEED_USERS, SEED_BOOKINGS, SEED_INTEGRATIONS, DEFAULT_ROLES, SEED_AUDIT_LOGS,
+} from '@/lib/seed-data';
+import {
+  SEED_CATEGORIES, SEED_BUNDLES, SEED_BADGES, SEED_USER_BADGES,
+  SEED_CERTIFICATES, SEED_NOTIFICATIONS, SEED_ACTIVITIES, SEED_NOTES,
+  SEED_DISCUSSIONS, SEED_ANNOUNCEMENTS, SEED_ASSIGNMENTS, SEED_GROUPS,
+  SEED_MESSAGES, SEED_CALENDAR_EVENTS, SEED_FRIENDSHIPS,
+} from '@/lib/seed-social';
 
 interface AppState {
   // Navigation
@@ -26,9 +40,36 @@ interface AppState {
   integrations: Integration[];
   auditLogs: AuditLog[];
 
+  // ---- social / engagement ----
+  notifications: AppNotification[];
+  activities: ActivityEntry[];
+  certificates: Certificate[];
+  badges: Badge[];
+  userBadges: UserBadge[];
+  notes: LessonNote[];
+  discussions: DiscussionPost[];
+  announcements: Announcement[];
+  assignments: Assignment[];
+  categories: CourseCategory[];
+  bundles: CourseBundle[];
+  groups: Group[];
+  messages: DirectMessage[];
+  calendarEvents: CalendarEvent[];
+  friendships: Friendship[];
+
   // ---- selectors ----
   currentUser: () => User | null;
   hasPermission: (perm: PermissionKey) => boolean;
+  unreadNotificationCount: () => number;
+  myActivities: (limit?: number) => ActivityEntry[];
+  myBadges: () => (UserBadge & { badge: Badge })[];
+  myCertificates: () => Certificate[];
+  myNotes: (courseId: string, lessonId: string) => LessonNote[];
+  myCalendar: () => CalendarEvent[];
+  myFriends: () => User[];
+  myGroups: () => Group[];
+  threadWith: (otherUserId: string) => DirectMessage[];
+  unreadDmCount: () => number;
 
   // ---- navigation ----
   navigate: (view: View) => void;
@@ -41,6 +82,14 @@ interface AppState {
   openTutorPortal: () => void;
   openAdmin: (tab?: View['adminTab']) => void;
   openMyLearning: () => void;
+  openDashboard: () => void;
+  openFeatures: () => void;
+  openCertificates: () => void;
+  openAchievements: () => void;
+  openCalendar: () => void;
+  openMembers: () => void;
+  openGroups: () => void;
+  openMessages: (threadId?: string) => void;
   setTutorOpen: (open: boolean) => void;
   setMenuOpen: (open: boolean) => void;
   toggleMenu: () => void;
@@ -84,6 +133,42 @@ interface AppState {
 
   // ---- audit ----
   logAction: (action: string, target?: string) => void;
+
+  // ---- notifications ----
+  pushNotification: (n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  clearNotification: (id: string) => void;
+
+  // ---- activity ----
+  logActivity: (entry: Omit<ActivityEntry, 'id' | 'createdAt' | 'userId'>) => void;
+
+  // ---- achievements ----
+  awardBadge: (slug: string) => void;
+  awardCertificate: (courseId: string, scorePct: number, template?: Certificate['template']) => void;
+
+  // ---- notes ----
+  saveNote: (courseId: string, lessonId: string, body: string, isPrivate?: boolean) => void;
+  deleteNote: (id: string) => void;
+
+  // ---- discussions ----
+  postDiscussion: (courseId: string, body: string, lessonId?: string) => void;
+  upvoteDiscussion: (id: string) => void;
+
+  // ---- announcements ----
+  postAnnouncement: (courseId: string, title: string, body: string) => void;
+
+  // ---- assignments ----
+  submitAssignment: (assignmentId: string, fileName: string) => void;
+  gradeAssignment: (assignmentId: string, userId: string, marks: number, feedback: string) => void;
+
+  // ---- social ----
+  sendDm: (toId: string, body: string) => void;
+  markDmRead: (fromId: string) => void;
+  addFriend: (friendId: string) => void;
+  acceptFriend: (friendId: string) => void;
+  joinGroup: (groupId: string) => void;
+  leaveGroup: (groupId: string) => void;
 }
 
 const AVATAR_COLORS = [
@@ -95,6 +180,10 @@ const AVATAR_COLORS = [
   'from-indigo-500 to-blue-600',
   'from-fuchsia-500 to-pink-600',
 ];
+
+function threadIdFor(a: string, b: string) {
+  return [a, b].sort().join('__');
+}
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -116,6 +205,23 @@ export const useAppStore = create<AppState>()(
       integrations: SEED_INTEGRATIONS,
       auditLogs: SEED_AUDIT_LOGS,
 
+      // social
+      notifications: SEED_NOTIFICATIONS,
+      activities: SEED_ACTIVITIES,
+      certificates: SEED_CERTIFICATES,
+      badges: SEED_BADGES,
+      userBadges: SEED_USER_BADGES,
+      notes: SEED_NOTES,
+      discussions: SEED_DISCUSSIONS,
+      announcements: SEED_ANNOUNCEMENTS,
+      assignments: SEED_ASSIGNMENTS,
+      categories: SEED_CATEGORIES,
+      bundles: SEED_BUNDLES,
+      groups: SEED_GROUPS,
+      messages: SEED_MESSAGES,
+      calendarEvents: SEED_CALENDAR_EVENTS,
+      friendships: SEED_FRIENDSHIPS,
+
       currentUser: () => {
         const id = get().currentUserId;
         return id ? get().users.find((u) => u.id === id) ?? null : null;
@@ -124,12 +230,89 @@ export const useAppStore = create<AppState>()(
       hasPermission: (perm) => {
         const user = get().currentUser();
         if (!user) {
-          // guests only have guest perms
           const guest = get().roles.find((r) => r.key === 'guest');
           return guest?.permissions.includes(perm) ?? false;
         }
         const role = get().roles.find((r) => r.key === user.role);
         return role?.permissions.includes(perm) ?? false;
+      },
+
+      unreadNotificationCount: () => {
+        const uid = get().currentUserId;
+        if (!uid) return 0;
+        return get().notifications.filter((n) => n.userId === uid && !n.read).length;
+      },
+
+      myActivities: (limit) => {
+        const uid = get().currentUserId;
+        if (!uid) return [];
+        const list = get().activities
+          .filter((a) => a.userId === uid)
+          .sort((a, b) => b.createdAt - a.createdAt);
+        return limit ? list.slice(0, limit) : list;
+      },
+
+      myBadges: () => {
+        const uid = get().currentUserId;
+        if (!uid) return [];
+        return get().userBadges
+          .filter((ub) => ub.userId === uid)
+          .map((ub) => {
+            const badge = get().badges.find((b) => b.slug === ub.badgeSlug);
+            return { ...ub, badge: badge! };
+          })
+          .filter((ub) => ub.badge);
+      },
+
+      myCertificates: () => {
+        const uid = get().currentUserId;
+        if (!uid) return [];
+        return get().certificates.filter((c) => c.userId === uid);
+      },
+
+      myNotes: (courseId, lessonId) => {
+        const uid = get().currentUserId;
+        if (!uid) return [];
+        return get().notes.filter((n) => n.userId === uid && n.courseId === courseId && n.lessonId === lessonId);
+      },
+
+      myCalendar: () => {
+        const uid = get().currentUserId;
+        if (!uid) return [];
+        return get().calendarEvents
+          .filter((e) => e.userId === uid)
+          .sort((a, b) => a.startsAt - b.startsAt);
+      },
+
+      myFriends: () => {
+        const uid = get().currentUserId;
+        if (!uid) return [];
+        const friends = get().friendships.filter(
+          (f) => (f.userId === uid || f.friendId === uid) && f.status === 'accepted'
+        );
+        const friendIds = friends.map((f) => (f.userId === uid ? f.friendId : f.userId));
+        return get().users.filter((u) => friendIds.includes(u.id));
+      },
+
+      myGroups: () => {
+        const uid = get().currentUserId;
+        if (!uid) return [];
+        return get().groups.filter((g) => g.memberIds.includes(uid));
+      },
+
+      threadWith: (otherUserId) => {
+        const uid = get().currentUserId;
+        if (!uid) return [];
+        const tid = threadIdFor(uid, otherUserId);
+        return get().messages
+          .filter((m) => m.threadId === tid)
+          .sort((a, b) => a.createdAt - b.createdAt);
+      },
+
+      unreadDmCount: () => {
+        const uid = get().currentUserId;
+        if (!uid) return 0;
+        return get().messages.filter((m) => m.toId === uid && !m.read).length;
       },
 
       // ---------- navigation ----------
@@ -148,6 +331,14 @@ export const useAppStore = create<AppState>()(
       openTutorPortal: () => set({ view: { name: 'tutor_portal' }, isMenuOpen: false }),
       openAdmin: (tab) => set({ view: { name: 'admin', adminTab: tab ?? 'dashboard' }, isMenuOpen: false }),
       openMyLearning: () => set({ view: { name: 'my_learning' }, isMenuOpen: false }),
+      openDashboard: () => set({ view: { name: 'dashboard' }, isMenuOpen: false }),
+      openFeatures: () => set({ view: { name: 'features' }, isMenuOpen: false }),
+      openCertificates: () => set({ view: { name: 'certificates' }, isMenuOpen: false }),
+      openAchievements: () => set({ view: { name: 'achievements' }, isMenuOpen: false }),
+      openCalendar: () => set({ view: { name: 'calendar' }, isMenuOpen: false }),
+      openMembers: () => set({ view: { name: 'members' }, isMenuOpen: false }),
+      openGroups: () => set({ view: { name: 'groups' }, isMenuOpen: false }),
+      openMessages: (threadId) => set({ view: { name: 'messages', dmThreadId: threadId }, isMenuOpen: false }),
       setTutorOpen: (open) => set({ isTutorOpen: open }),
       setMenuOpen: (open) => set({ isMenuOpen: open }),
       toggleMenu: () => set((s) => ({ isMenuOpen: !s.isMenuOpen })),
@@ -155,20 +346,39 @@ export const useAppStore = create<AppState>()(
       // ---------- auth ----------
       setAuthOpen: (open, mode = 'login', registerRole = 'candidate') =>
         set({ isAuthOpen: open, authMode: mode, registerRole }),
+
       login: (email, role) => {
         const user = get().users.find((u) => u.email.toLowerCase() === email.toLowerCase());
         if (user) {
-          set({ currentUserId: user.id, isAuthOpen: false });
+          set({ currentUserId: user.id, isAuthOpen: false, view: { name: 'dashboard' } });
           get().logAction('Logged in');
+          get().pushNotification({
+            userId: user.id,
+            type: 'success',
+            title: `Welcome back, ${user.name.split(' ')[0]}!`,
+            body: 'You\'re now signed in. Your dashboard has the latest on your courses, sessions, and badges.',
+            link: 'dashboard',
+          });
           return true;
         }
         return false;
       },
+
       loginAs: (userId) => {
-        set({ currentUserId: userId, isAuthOpen: false });
         const u = get().users.find((x) => x.id === userId);
-        if (u) get().logAction('Impersonated user', u.name);
+        set({ currentUserId: userId, isAuthOpen: false, view: { name: 'dashboard' } });
+        if (u) {
+          get().logAction('Impersonated user', u.name);
+          get().pushNotification({
+            userId,
+            type: 'info',
+            title: `Signed in as ${u.name}`,
+            body: `Role: ${u.role}. You can switch roles anytime via the avatar menu.`,
+            link: 'dashboard',
+          });
+        }
       },
+
       register: (name, email, role, tutorHeadline) => {
         const id = `u-${role}-${Date.now()}`;
         const newUser: User = {
@@ -198,21 +408,51 @@ export const useAppStore = create<AppState>()(
           users: [...s.users, newUser],
           currentUserId: id,
           isAuthOpen: false,
+          view: { name: 'dashboard' },
         }));
         get().logAction('Registered new account', `${name} (${role})`);
+        get().pushNotification({
+          userId: id,
+          type: 'success',
+          title: `Welcome to Marq AI, ${name.split(' ')[0]}! 🎉`,
+          body: role === 'tutor'
+            ? 'Your tutor application is pending review by the Super Admin. You\'ll be notified once approved.'
+            : 'Your candidate account is ready. Browse the catalog and enroll in your first course to get started.',
+          link: 'dashboard',
+        });
+        if (role === 'tutor') {
+          get().pushNotification({
+            userId: 'u-admin-1',
+            type: 'system',
+            title: `New tutor application — ${name}`,
+            body: `${name} applied to teach on Marq AI. Review their application in the Admin Portal.`,
+            link: 'admin:tutors',
+          });
+        }
       },
+
       logout: () => {
         get().logAction('Logged out');
         set({ currentUserId: null, view: { name: 'home' } });
       },
 
       // ---------- learning ----------
-      markLessonComplete: (lessonId) =>
-        set((s) =>
-          s.completedLessons.includes(lessonId)
-            ? s
-            : { completedLessons: [...s.completedLessons, lessonId] }
-        ),
+      markLessonComplete: (lessonId) => {
+        const alreadyDone = get().completedLessons.includes(lessonId);
+        if (!alreadyDone) {
+          set((s) => ({ completedLessons: [...s.completedLessons, lessonId] }));
+          // Award first-lesson badge if applicable
+          if (get().completedLessons.length === 1) {
+            get().awardBadge('first-lesson');
+          }
+          // Log activity
+          get().logActivity({
+            kind: 'lesson_completed',
+            lessonId,
+            text: 'Completed a lesson',
+          });
+        }
+      },
 
       // ---------- chat ----------
       addMessage: (msg) => set((s) => ({ chatMessages: [...s.chatMessages, msg] })),
@@ -272,6 +512,15 @@ export const useAppStore = create<AppState>()(
         }));
         const u = get().users.find((x) => x.id === id);
         get().logAction('Approved tutor', u?.name);
+        if (u) {
+          get().pushNotification({
+            userId: id,
+            type: 'success',
+            title: '🎉 You\'re approved as a Marq AI tutor!',
+            body: 'You can now set your availability, accept bookings, and start teaching. Visit your Tutor Dashboard to complete your profile.',
+            link: 'tutor_portal',
+          });
+        }
       },
       setTutorPayment: (id, patch) => {
         set((s) => ({
@@ -290,6 +539,44 @@ export const useAppStore = create<AppState>()(
         const id = `b-${Date.now()}`;
         set((s) => ({ bookings: [...s.bookings, { ...b, id }] }));
         get().logAction('Booked session', `${b.topic}`);
+        // push notifications to both parties
+        get().pushNotification({
+          userId: b.candidateId,
+          type: 'session',
+          title: 'Session booked ✅',
+          body: `Your session "${b.topic}" is scheduled. Add it to your calendar.`,
+          link: 'calendar',
+        });
+        get().pushNotification({
+          userId: b.tutorId,
+          type: 'session',
+          title: 'New booking received',
+          body: `A candidate booked "${b.topic}". Check your tutor dashboard.`,
+          link: 'tutor_portal',
+        });
+        // auto-add to calendars
+        set((s) => ({
+          calendarEvents: [
+            ...s.calendarEvents,
+            {
+              id: `ce-${Date.now()}`,
+              userId: b.candidateId,
+              title: `1:1 — ${b.topic}`,
+              type: 'session',
+              startsAt: b.scheduledAt,
+              durationMinutes: b.durationMinutes,
+              courseContext: b.courseContext,
+            } as CalendarEvent,
+            {
+              id: `ce-${Date.now() + 1}`,
+              userId: b.tutorId,
+              title: `Session: ${b.topic}`,
+              type: 'session',
+              startsAt: b.scheduledAt,
+              durationMinutes: b.durationMinutes,
+            } as CalendarEvent,
+          ],
+        }));
         return id;
       },
       cancelBooking: (id) => {
@@ -328,6 +615,286 @@ export const useAppStore = create<AppState>()(
         };
         set((s) => ({ auditLogs: [log, ...s.auditLogs].slice(0, 100) }));
       },
+
+      // ---------- notifications ----------
+      pushNotification: (n) => {
+        const notif: AppNotification = {
+          id: `n-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          read: false,
+          createdAt: Date.now(),
+          ...n,
+        };
+        set((s) => ({ notifications: [notif, ...s.notifications].slice(0, 200) }));
+        // Browser push notification (best-effort, only when permitted & user is recipient & page visible)
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+          const cur = get().currentUserId;
+          if (cur === n.userId && Notification.permission === 'granted') {
+            try {
+              new Notification(n.title, { body: n.body });
+            } catch { /* noop */ }
+          }
+        }
+      },
+      markNotificationRead: (id) =>
+        set((s) => ({
+          notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
+        })),
+      markAllNotificationsRead: () => {
+        const uid = get().currentUserId;
+        set((s) => ({
+          notifications: s.notifications.map((n) =>
+            n.userId === uid ? { ...n, read: true } : n
+          ),
+        }));
+      },
+      clearNotification: (id) =>
+        set((s) => ({ notifications: s.notifications.filter((n) => n.id !== id) })),
+
+      // ---------- activity ----------
+      logActivity: (entry) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        const a: ActivityEntry = {
+          id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          userId: uid,
+          createdAt: Date.now(),
+          ...entry,
+        };
+        set((s) => ({ activities: [a, ...s.activities].slice(0, 500) }));
+      },
+
+      // ---------- achievements ----------
+      awardBadge: (slug) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        const exists = get().userBadges.some((ub) => ub.userId === uid && ub.badgeSlug === slug);
+        if (exists) return;
+        const badge = get().badges.find((b) => b.slug === slug);
+        if (!badge) return;
+        set((s) => ({
+          userBadges: [...s.userBadges, { userId: uid, badgeSlug: slug, awardedAt: Date.now() }],
+        }));
+        get().logActivity({ kind: 'badge_earned', text: `Unlocked the ${badge.title} badge`, meta: { badge: slug } });
+        get().pushNotification({
+          userId: uid,
+          type: 'success',
+          title: `New badge unlocked — ${badge.title} ${badge.icon}`,
+          body: `${badge.description}. ${badge.criteria}.`,
+          link: 'achievements',
+        });
+      },
+
+      awardCertificate: (courseId, scorePct, template = 'default') => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        const exists = get().certificates.some((c) => c.userId === uid && c.courseId === courseId);
+        if (exists) return;
+        const code = `MARQ-${courseId.toUpperCase().slice(0, 6)}-${Date.now().toString(36).toUpperCase()}`;
+        const cert: Certificate = {
+          id: `cert-${Date.now()}`,
+          userId: uid,
+          courseId,
+          code,
+          issuedAt: Date.now(),
+          scorePct,
+          template,
+        };
+        set((s) => ({ certificates: [...s.certificates, cert] }));
+        get().logActivity({
+          kind: 'certificate_earned',
+          courseId,
+          text: `Earned a certificate (${scorePct}%)`,
+          meta: { code },
+        });
+        get().pushNotification({
+          userId: uid,
+          type: 'success',
+          title: '🎓 Certificate earned!',
+          body: `Congratulations! You earned a certificate. Validation code: ${code}.`,
+          link: 'certificates',
+        });
+      },
+
+      // ---------- notes ----------
+      saveNote: (courseId, lessonId, body, isPrivate = true) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        const id = `note-${Date.now()}`;
+        const note: LessonNote = {
+          id, userId: uid, courseId, lessonId, body, isPrivate,
+          createdAt: Date.now(), updatedAt: Date.now(),
+        };
+        set((s) => ({ notes: [...s.notes, note] }));
+        get().logActivity({ kind: 'note_saved', courseId, lessonId, text: 'Saved a lesson note' });
+      },
+      deleteNote: (id) => set((s) => ({ notes: s.notes.filter((n) => n.id !== id) })),
+
+      // ---------- discussions ----------
+      postDiscussion: (courseId, body, lessonId) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        const post: DiscussionPost = {
+          id: `d-${Date.now()}`,
+          courseId, lessonId, authorId: uid, body, upvotes: [], createdAt: Date.now(),
+        };
+        set((s) => ({ discussions: [...s.discussions, post] }));
+        get().logActivity({ kind: 'discussion_posted', courseId, text: 'Posted a discussion reply' });
+      },
+      upvoteDiscussion: (id) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        set((s) => ({
+          discussions: s.discussions.map((d) => {
+            if (d.id !== id) return d;
+            const has = d.upvotes.includes(uid);
+            return { ...d, upvotes: has ? d.upvotes.filter((u) => u !== uid) : [...d.upvotes, uid] };
+          }),
+        }));
+      },
+
+      // ---------- announcements ----------
+      postAnnouncement: (courseId, title, body) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        const an: Announcement = {
+          id: `an-${Date.now()}`,
+          courseId, authorId: uid, title, body, createdAt: Date.now(),
+        };
+        set((s) => ({ announcements: [an, ...s.announcements] }));
+        get().logActivity({ kind: 'announcement_posted', courseId, text: `Posted announcement: ${title}` });
+        // notify all enrolled candidates
+        const course = courseId;
+        const enrolled = get().users.filter((u) => u.enrolledCourseIds.includes(course) && u.id !== uid);
+        enrolled.forEach((u) => {
+          get().pushNotification({
+            userId: u.id,
+            type: 'announcement',
+            title: `New announcement — ${title}`,
+            body: body.slice(0, 140) + (body.length > 140 ? '...' : ''),
+            link: `course:${courseId}`,
+          });
+        });
+      },
+
+      // ---------- assignments ----------
+      submitAssignment: (assignmentId, fileName) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        set((s) => ({
+          assignments: s.assignments.map((a) =>
+            a.id === assignmentId
+              ? {
+                  ...a,
+                  submissions: {
+                    ...a.submissions,
+                    [uid]: { status: 'submitted', fileName, submittedAt: Date.now() },
+                  },
+                }
+              : a
+          ),
+        }));
+        get().logActivity({ kind: 'lesson_completed', text: `Submitted assignment: ${fileName}` });
+      },
+      gradeAssignment: (assignmentId, userId, marks, feedback) => {
+        set((s) => ({
+          assignments: s.assignments.map((a) =>
+            a.id === assignmentId
+              ? {
+                  ...a,
+                  submissions: {
+                    ...a.submissions,
+                    [userId]: { ...(a.submissions[userId] ?? {}), status: 'graded', marks, feedback },
+                  },
+                }
+              : a
+          ),
+        }));
+        get().pushNotification({
+          userId,
+          type: 'info',
+          title: 'Assignment graded',
+          body: `You scored ${marks}/100. Feedback: "${feedback.slice(0, 80)}"`,
+        });
+      },
+
+      // ---------- social ----------
+      sendDm: (toId, body) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        const msg: DirectMessage = {
+          id: `m-${Date.now()}`,
+          threadId: threadIdFor(uid, toId),
+          fromId: uid, toId, body, read: false, createdAt: Date.now(),
+        };
+        set((s) => ({ messages: [...s.messages, msg] }));
+        get().pushNotification({
+          userId: toId,
+          type: 'social',
+          title: 'New message',
+          body: `${get().currentUser()?.name}: ${body.slice(0, 80)}`,
+          link: 'messages',
+        });
+      },
+      markDmRead: (fromId) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        set((s) => ({
+          messages: s.messages.map((m) =>
+            m.toId === uid && m.fromId === fromId ? { ...m, read: true } : m
+          ),
+        }));
+      },
+      addFriend: (friendId) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        const exists = get().friendships.some(
+          (f) => (f.userId === uid && f.friendId === friendId) || (f.userId === friendId && f.friendId === uid)
+        );
+        if (exists) return;
+        set((s) => ({
+          friendships: [...s.friendships, { userId: uid, friendId, status: 'pending', createdAt: Date.now() }],
+        }));
+        get().pushNotification({
+          userId: friendId,
+          type: 'social',
+          title: 'New friend request',
+          body: `${get().currentUser()?.name} wants to connect.`,
+          link: 'members',
+        });
+      },
+      acceptFriend: (friendId) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        set((s) => ({
+          friendships: s.friendships.map((f) =>
+            f.userId === friendId && f.friendId === uid
+              ? { ...f, status: 'accepted' }
+              : f
+          ),
+        }));
+        get().logActivity({ kind: 'friend_added', text: 'Accepted a friend request' });
+      },
+      joinGroup: (groupId) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        set((s) => ({
+          groups: s.groups.map((g) =>
+            g.id === groupId && !g.memberIds.includes(uid)
+              ? { ...g, memberIds: [...g.memberIds, uid] }
+              : g
+          ),
+        }));
+        get().logActivity({ kind: 'group_joined', text: `Joined a group` });
+      },
+      leaveGroup: (groupId) => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        set((s) => ({
+          groups: s.groups.map((g) =>
+            g.id === groupId ? { ...g, memberIds: g.memberIds.filter((m) => m !== uid) } : g
+          ),
+        }));
+      },
     }),
     {
       name: 'marq-ai-storage',
@@ -341,6 +908,18 @@ export const useAppStore = create<AppState>()(
         bookings: s.bookings,
         integrations: s.integrations,
         auditLogs: s.auditLogs.slice(0, 50),
+        notifications: s.notifications.slice(0, 100),
+        activities: s.activities.slice(0, 100),
+        certificates: s.certificates,
+        userBadges: s.userBadges,
+        notes: s.notes,
+        discussions: s.discussions,
+        announcements: s.announcements,
+        assignments: s.assignments,
+        groups: s.groups,
+        messages: s.messages.slice(-200),
+        calendarEvents: s.calendarEvents,
+        friendships: s.friendships,
       }),
     }
   )

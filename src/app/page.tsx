@@ -14,6 +14,11 @@ import { TutorMarketplace } from '@/components/tutor-marketplace';
 import { TutorPortal } from '@/components/tutor-portal';
 import { AdminPortal } from '@/components/admin-portal';
 import { MyLearning } from '@/components/my-learning';
+import { Dashboard } from '@/components/dashboard';
+import {
+  CalendarPage, MembersPage, GroupsPage, MessagesPage,
+  CertificatesPage, AchievementsPage, FeaturesPage,
+} from '@/components/portal-pages';
 import { useAppStore } from '@/lib/store';
 
 export default function Home() {
@@ -23,6 +28,15 @@ export default function Home() {
   useEffect(() => {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' });
   }, [view.name, (view as { courseId?: string }).courseId, (view as { lessonId?: string }).lessonId, (view as { adminTab?: string }).adminTab]);
+
+  // Register service worker for PWA on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // ignore — PWA is progressive enhancement only
+      });
+    }
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -50,6 +64,14 @@ export default function Home() {
         {view.name === 'tutor_portal' && <TutorPortal />}
         {view.name === 'admin' && <AdminPortal />}
         {view.name === 'my_learning' && <MyLearning />}
+        {view.name === 'dashboard' && <Dashboard />}
+        {view.name === 'calendar' && <CalendarPage />}
+        {view.name === 'members' && <MembersPage />}
+        {view.name === 'groups' && <GroupsPage />}
+        {view.name === 'messages' && <MessagesPage />}
+        {view.name === 'certificates' && <CertificatesPage />}
+        {view.name === 'achievements' && <AchievementsPage />}
+        {view.name === 'features' && <FeaturesPage />}
       </main>
       <Footer />
       <TutorChat />

@@ -1,17 +1,18 @@
 'use client';
 
-import { GraduationCap, Menu, X, Sparkles, MessageCircle, LogIn, User as UserIcon, ShieldCheck, LayoutDashboard, BookOpen, LogOut, ChevronDown, BadgeCheck } from 'lucide-react';
+import { GraduationCap, Menu, X, Sparkles, MessageCircle, LogIn, User as UserIcon, ShieldCheck, LayoutDashboard, BookOpen, LogOut, ChevronDown, BadgeCheck, Bell, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAppStore } from '@/lib/store';
 import { COURSES } from '@/lib/courses';
+import { NotificationsBell } from './notifications-bell';
 
 export function Navbar() {
   const {
     view, isMenuOpen, toggleMenu, goHome, openCourse,
-    setTutorOpen, openPricing, openTutors, openAdmin, openTutorPortal, openMyLearning,
+    setTutorOpen, openPricing, openTutors, openAdmin, openTutorPortal, openMyLearning, openDashboard, openFeatures,
     currentUser, logout, setAuthOpen,
   } = useAppStore();
   const user = currentUser();
@@ -80,6 +81,12 @@ export function Navbar() {
             Pricing
           </button>
           <button
+            onClick={openFeatures}
+            className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${view.name === 'features' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Features
+          </button>
+          <button
             onClick={() => setTutorOpen(true)}
             className="ml-2 inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
@@ -89,55 +96,73 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-full border bg-card pl-1 pr-2 py-1 text-sm transition-colors hover:bg-accent">
-                  <Avatar className="h-7 w-7">
-                    <AvatarFallback className={`bg-gradient-to-br ${user.avatarColor} text-white text-xs font-bold`}>
-                      {user.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden max-w-[100px] truncate font-medium sm:inline">{user.name.split(' ')[0]}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold">{user.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-                    <Badge variant="secondary" className="mt-1 w-fit text-[10px] capitalize">
-                      {user.role === 'super_admin' ? 'Super Admin' : user.role === 'tutor' ? 'Human Tutor' : user.role}
-                    </Badge>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {user.role === 'candidate' && (
-                  <DropdownMenuItem onClick={openMyLearning}>
-                    <BookOpen className="mr-2 h-4 w-4" /> My Learning
+          {user && (
+            <>
+              <Button
+                onClick={openDashboard}
+                variant="ghost"
+                size="sm"
+                className="hidden md:inline-flex"
+              >
+                <LayoutDashboard className="mr-1.5 h-4 w-4" /> Dashboard
+              </Button>
+              <NotificationsBell />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 rounded-full border bg-card pl-1 pr-2 py-1 text-sm transition-colors hover:bg-accent">
+                    <Avatar className="h-7 w-7">
+                      <AvatarFallback className={`bg-gradient-to-br ${user.avatarColor} text-white text-xs font-bold`}>
+                        {user.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden max-w-[100px] truncate font-medium sm:inline">{user.name.split(' ')[0]}</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold">{user.name}</span>
+                      <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                      <Badge variant="secondary" className="mt-1 w-fit text-[10px] capitalize">
+                        {user.role === 'super_admin' ? 'Super Admin' : user.role === 'tutor' ? 'Human Tutor' : user.role}
+                      </Badge>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={openDashboard}>
+                    <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
                   </DropdownMenuItem>
-                )}
-                {user.role === 'tutor' && (
-                  <DropdownMenuItem onClick={openTutorPortal}>
-                    <LayoutDashboard className="mr-2 h-4 w-4" /> Tutor Dashboard
+                  {user.role === 'candidate' && (
+                    <DropdownMenuItem onClick={openMyLearning}>
+                      <BookOpen className="mr-2 h-4 w-4" /> My Learning
+                    </DropdownMenuItem>
+                  )}
+                  {user.role === 'tutor' && (
+                    <DropdownMenuItem onClick={openTutorPortal}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" /> Tutor Portal
+                    </DropdownMenuItem>
+                  )}
+                  {user.role === 'super_admin' && (
+                    <DropdownMenuItem onClick={() => openAdmin('dashboard')}>
+                      <ShieldCheck className="mr-2 h-4 w-4" /> Admin Portal
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={openFeatures}>
+                    <Grid3x3 className="mr-2 h-4 w-4" /> Features
                   </DropdownMenuItem>
-                )}
-                {user.role === 'super_admin' && (
-                  <DropdownMenuItem onClick={() => openAdmin('dashboard')}>
-                    <ShieldCheck className="mr-2 h-4 w-4" /> Admin Portal
+                  <DropdownMenuItem onClick={() => setTutorOpen(true)}>
+                    <Sparkles className="mr-2 h-4 w-4" /> Ask AI Tutor
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => setTutorOpen(true)}>
-                  <Sparkles className="mr-2 h-4 w-4" /> Ask AI Tutor
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="text-rose-600 dark:text-rose-400">
-                  <LogOut className="mr-2 h-4 w-4" /> Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="text-rose-600 dark:text-rose-400">
+                    <LogOut className="mr-2 h-4 w-4" /> Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+          {!user && (
             <Button
               onClick={() => setAuthOpen(true, 'login')}
               variant="outline"
@@ -182,6 +207,7 @@ export function Navbar() {
             ))}
             <button onClick={openTutors} className="mt-1 rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Human Tutors</button>
             <button onClick={openPricing} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Pricing</button>
+            <button onClick={openFeatures} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Features</button>
             <button onClick={() => setTutorOpen(true)} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">AI Tutor</button>
             <div className="mt-2 border-t pt-3">
               {user ? (
@@ -195,6 +221,7 @@ export function Navbar() {
                       <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
                     </div>
                   </div>
+                  <button onClick={openDashboard} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">Dashboard</button>
                   {user.role === 'candidate' && <button onClick={openMyLearning} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">My Learning</button>}
                   {user.role === 'tutor' && <button onClick={openTutorPortal} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">Tutor Dashboard</button>}
                   {user.role === 'super_admin' && <button onClick={() => openAdmin('dashboard')} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">Admin Portal</button>}

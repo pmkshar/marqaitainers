@@ -1,4 +1,4 @@
-import { Course } from './types';
+import { Course, Lesson } from './types';
 
 // Sample video URLs (open-source / public domain sample videos)
 const SAMPLE_VIDEO_1 = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
@@ -439,6 +439,8 @@ export const COURSES: Course[] = [
     monthlyPrice: 29,
     annualPrice: 290,
     onDemand: true,
+    categoryIds: ['cat-ai', 'cat-backend'],
+    expiresAfterDays: 365,
   },
 
   // ============================================================
@@ -823,6 +825,8 @@ export const COURSES: Course[] = [
     monthlyPrice: 25,
     annualPrice: 249,
     onDemand: true,
+    categoryIds: ['cat-backend', 'cat-web'],
+    expiresAfterDays: 365,
   },
 
   // ============================================================
@@ -1079,6 +1083,8 @@ export const COURSES: Course[] = [
     monthlyPrice: 25,
     annualPrice: 249,
     onDemand: true,
+    categoryIds: ['cat-backend', 'cat-cloud'],
+    expiresAfterDays: 365,
   },
 
   // ============================================================
@@ -1409,6 +1415,8 @@ export const COURSES: Course[] = [
     monthlyPrice: 23,
     annualPrice: 229,
     onDemand: true,
+    categoryIds: ['cat-mobile', 'cat-frontend'],
+    expiresAfterDays: 180,
   },
 
   // ============================================================
@@ -1739,27 +1747,36 @@ export const COURSES: Course[] = [
     monthlyPrice: 22,
     annualPrice: 219,
     onDemand: true,
+    categoryIds: ['cat-mobile', 'cat-frontend'],
+    expiresAfterDays: 180,
   },
 ];
 
-export function findCourse(courseId: string): Course | undefined {
+export function findCourse(courseId: string | undefined): Course | undefined {
+  if (!courseId) return undefined;
   return COURSES.find((c) => c.id === courseId);
 }
 
-export function findLesson(courseId: string, moduleId: string, lessonId: string) {
+export function findLesson(courseId: string | undefined, moduleId: string | undefined, lessonId: string | undefined) {
+  if (!courseId || !moduleId || !lessonId) return undefined;
   const course = findCourse(courseId);
-  if (!course) return null;
-  const mod = course.modules.find((m) => m.id === moduleId);
-  if (!mod) return null;
-  const lesson = mod.lessons.find((l) => l.id === lessonId);
-  if (!lesson) return null;
-  return { course, module: mod, lesson };
+  if (!course) return undefined;
+  const module = course.modules.find((m) => m.id === moduleId);
+  if (!module) return undefined;
+  const lesson = module.lessons.find((l) => l.id === lessonId);
+  if (!lesson) return undefined;
+  return { course, module, lesson };
 }
 
-export function getAllLessons(courseId: string) {
+export function getAllLessons(courseId: string | undefined) {
+  if (!courseId) return [];
   const course = findCourse(courseId);
   if (!course) return [];
-  return course.modules.flatMap((m) =>
-    m.lessons.map((l) => ({ courseId, moduleId: m.id, lessonId: l.id, title: l.title, module: m.title }))
-  );
+  const out: { courseId: string; moduleId: string; lessonId: string; lesson: Lesson; title: string; module: string }[] = [];
+  for (const m of course.modules) {
+    for (const l of m.lessons) {
+      out.push({ courseId, moduleId: m.id, lessonId: l.id, lesson: l, title: l.title, module: m.title });
+    }
+  }
+  return out;
 }

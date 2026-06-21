@@ -1,0 +1,53 @@
+{
+  "name": "MarqAI Software Tutor",
+  "short_name": "MarqAI",
+  "description": "AI + Human tutors · step-wise lessons · video walkthroughs · graded tests · Super Admin portal with RBAC.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["education", "productivity", "business"],
+  "icons": [
+    {
+      "src": "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open your personal dashboard",
+      "url": "/?view=dashboard"
+    },
+    {
+      "name": "AI Tutor",
+      "short_name": "AI Tutor",
+      "description": "Ask the AI tutor a question",
+      "url": "/?view=aitutor"
+    },
+    {
+      "name": "Pricing",
+      "short_name": "Pricing",
+      "description": "View subscription and per-course pricing",
+      "url": "/?view=pricing"
+    }
+  ]
+}

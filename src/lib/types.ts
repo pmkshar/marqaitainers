@@ -2,6 +2,190 @@
 // Core domain types for Marq AI Software Tutor
 // ============================================================
 
+// ============================================================
+// Activity / Social / Engagement features (WPLMS-parity)
+// ============================================================
+
+export type NotificationType =
+  | 'info' | 'success' | 'warning' | 'error'
+  | 'course' | 'session' | 'social' | 'system' | 'announcement';
+
+export interface AppNotification {
+  id: string;
+  userId: string;       // recipient
+  type: NotificationType;
+  title: string;
+  body: string;
+  link?: string;        // navigation hint (e.g. "course:ai-ml")
+  read: boolean;
+  createdAt: number;
+}
+
+export type ActivityKind =
+  | 'lesson_completed' | 'quiz_passed' | 'quiz_failed'
+  | 'course_enrolled' | 'course_completed' | 'badge_earned'
+  | 'certificate_earned' | 'session_booked' | 'session_completed'
+  | 'note_saved' | 'discussion_posted' | 'announcement_posted'
+  | 'group_joined' | 'friend_added' | 'message_sent';
+
+export interface ActivityEntry {
+  id: string;
+  userId: string;
+  kind: ActivityKind;
+  courseId?: string;
+  lessonId?: string;
+  text: string;
+  meta?: Record<string, string | number>;
+  createdAt: number;
+}
+
+export interface Certificate {
+  id: string;
+  userId: string;
+  courseId: string;
+  code: string;          // unique validation code
+  issuedAt: number;
+  scorePct: number;
+  template: 'default' | 'gold' | 'platinum';
+}
+
+export type BadgeTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+
+export interface Badge {
+  id: string;
+  slug: string;           // e.g. 'first-lesson'
+  title: string;
+  description: string;
+  tier: BadgeTier;
+  icon: string;           // emoji
+  criteria: string;
+}
+
+export interface UserBadge {
+  userId: string;
+  badgeSlug: string;
+  awardedAt: number;
+}
+
+export interface LessonNote {
+  id: string;
+  userId: string;
+  courseId: string;
+  lessonId: string;
+  body: string;
+  isPrivate: boolean;     // private to student, or visible to instructor
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface DiscussionPost {
+  id: string;
+  courseId: string;
+  lessonId?: string;
+  authorId: string;
+  body: string;
+  upvotes: string[];      // user IDs
+  replyToId?: string;
+  createdAt: number;
+}
+
+export interface Announcement {
+  id: string;
+  courseId: string;
+  authorId: string;
+  title: string;
+  body: string;
+  createdAt: number;
+}
+
+export type AssignmentStatus = 'pending' | 'submitted' | 'graded';
+
+export interface Assignment {
+  id: string;
+  courseId: string;
+  moduleId: string;
+  title: string;
+  prompt: string;
+  maxMarks: number;
+  dueAt: number;
+  // per-student state
+  submissions: Record<string, {
+    status: AssignmentStatus;
+    fileName?: string;
+    submittedAt?: number;
+    marks?: number;
+    feedback?: string;
+  }>;
+}
+
+export interface CourseCategory {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  courseIds: string[];
+}
+
+export interface CourseBundle {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string;
+  courseIds: string[];
+  price: number;
+  originalPrice: number;
+  highlight: string;
+}
+
+export interface Group {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: 'study' | 'cohort' | 'tutor' | 'regional' | 'interest';
+  memberIds: string[];
+  adminIds: string[];
+  createdAt: number;
+}
+
+export interface DirectMessage {
+  id: string;
+  threadId: string;       // sorted pair "u-a__u-b"
+  fromId: string;
+  toId: string;
+  body: string;
+  read: boolean;
+  createdAt: number;
+}
+
+export interface CalendarEvent {
+  id: string;
+  userId: string;        // owner
+  title: string;
+  type: 'session' | 'deadline' | 'live_class' | 'reminder' | 'meeting';
+  startsAt: number;
+  durationMinutes: number;
+  courseId?: string;
+  link?: string;
+}
+
+export interface Friendship {
+  userId: string;
+  friendId: string;
+  status: 'pending' | 'accepted';
+  createdAt: number;
+}
+
+export interface CourseEnrollmentMeta {
+  userId: string;
+  courseId: string;
+  enrolledAt: number;
+  expiresAt?: number;       // course expiration support
+  model: 'one_time' | 'subscription_monthly' | 'subscription_annual' | 'bundle' | 'free';
+  progressPct: number;
+  lastAccessedAt: number;
+}
+
 export type RoleKey = 'super_admin' | 'tutor' | 'candidate' | 'guest';
 
 export type PermissionKey =
@@ -165,6 +349,8 @@ export interface Course {
   monthlyPrice: number;
   annualPrice: number;
   onDemand: boolean; // available on demand
+  categoryIds: string[]; // course categories
+  expiresAfterDays?: number; // course expiration window (e.g. 180 = 6 months)
 }
 
 export type ViewName =
@@ -176,7 +362,15 @@ export type ViewName =
   | 'tutors'         // human tutor marketplace
   | 'tutor_portal'   // logged-in tutor dashboard
   | 'admin'          // super admin portal
-  | 'my_learning';
+  | 'my_learning'
+  | 'dashboard'      // unified post-login dashboard (all roles)
+  | 'certificates'
+  | 'achievements'
+  | 'calendar'
+  | 'members'
+  | 'groups'
+  | 'messages'
+  | 'features';      // WPLMS-parity features showcase
 
 export interface View {
   name: ViewName;
@@ -185,6 +379,7 @@ export interface View {
   lessonId?: string;
   adminTab?: AdminTab;
   tutorTab?: TutorTab;
+  dmThreadId?: string;   // for messages view
 }
 
 export type AdminTab =
