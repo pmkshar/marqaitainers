@@ -278,6 +278,13 @@ export function CourseIcon({ name, className }: { name: string; className?: stri
         <path d="M12.8 19.6A2 2 0 1 0 14 16H2M17.5 8a2.5 2.5 0 1 1 2 4H2M9.8 4.4A2 2 0 1 1 11 8H2" />
       </svg>
     ),
+    Code2: (p) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+        <path d="m18 16 4-4-4-4" />
+        <path d="m6 8-4 4 4 4" />
+        <path d="m14.5 4-5 16" />
+      </svg>
+    ),
   };
   const Cmp = map[name] ?? map.BrainCircuit;
   return <Cmp className={className ?? 'h-5 w-5'} />;

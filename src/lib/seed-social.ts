@@ -25,6 +25,7 @@ const hour = 60 * 60 * 1000;
 // ============================================================
 
 export const SEED_CATEGORIES: CourseCategory[] = [
+  { id: 'cat-python', name: 'Python & Scripting', description: 'Python, automation, data engineering', color: 'from-amber-500 to-orange-600', courseIds: ['python-pro'] },
   { id: 'cat-ai', name: 'AI & Machine Learning', description: 'ML, deep learning, LLMs, RAG, MLOps', color: 'from-violet-500 to-purple-600', courseIds: ['ai-ml'] },
   { id: 'cat-backend', name: 'Backend Engineering', description: 'Server-side frameworks, APIs, databases', color: 'from-emerald-500 to-teal-600', courseIds: ['ai-ml', 'java-fullstack', 'dotnet-fullstack'] },
   { id: 'cat-frontend', name: 'Frontend & UI', description: 'Web & mobile UI frameworks', color: 'from-rose-500 to-pink-600', courseIds: ['flutter-dev', 'mobile-dev'] },

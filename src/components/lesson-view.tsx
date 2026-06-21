@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight,
   Clock, FileQuestion, Lightbulb, ListChecks, Sparkles, Video,
@@ -14,12 +14,56 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { findCourse, findLesson, getAllLessons } from '@/lib/courses';
 import { useAppStore } from '@/lib/store';
 import { CourseIcon } from './navbar';
+import { AITutorIntro, useShouldShowIntro } from './ai-tutor-intro';
+
+const INTRO_PER_LESSON_KEY = 'marq-ai-tutor-intro-seen';
+
+function lessonSeen(lessonId: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = window.localStorage.getItem(INTRO_PER_LESSON_KEY);
+    const seen: string[] = raw ? JSON.parse(raw) : [];
+    return seen.includes(lessonId);
+  } catch { return false; }
+}
+
+function markLessonSeen(lessonId: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = window.localStorage.getItem(INTRO_PER_LESSON_KEY);
+    const seen: string[] = raw ? JSON.parse(raw) : [];
+    if (!seen.includes(lessonId)) {
+      seen.push(lessonId);
+      window.localStorage.setItem(INTRO_PER_LESSON_KEY, JSON.stringify(seen));
+    }
+  } catch { /* noop */ }
+}
 
 export function LessonView({ courseId, moduleId, lessonId }: { courseId: string; moduleId: string; lessonId: string }) {
   const result = findLesson(courseId, moduleId, lessonId);
   const { openCourse, openQuiz, setTutorOpen, markLessonComplete, completedLessons } = useAppStore();
   const [activeStep, setActiveStep] = useState(0);
   const stepRef = useRef<HTMLDivElement>(null);
+
+  // AI tutor intro overlay state
+  const globalIntroEnabled = useShouldShowIntro();
+  const [introSeenForThisLesson, setIntroSeenForThisLesson] = useState(true);
+
+  // Reset intro state when lesson changes
+  useEffect(() => {
+    if (globalIntroEnabled && !lessonSeen(lessonId)) {
+      setIntroSeenForThisLesson(false);
+    } else {
+      setIntroSeenForThisLesson(true);
+    }
+    // Also reset the active step when lesson changes
+    setActiveStep(0);
+  }, [lessonId, globalIntroEnabled]);
+
+  const handleIntroStart = () => {
+    markLessonSeen(lessonId);
+    setIntroSeenForThisLesson(true);
+  };
 
   const course = findCourse(courseId);
   const allLessons = getAllLessons(courseId);
@@ -42,6 +86,17 @@ export function LessonView({ courseId, moduleId, lessonId }: { courseId: string;
   const { course: c, module: mod, lesson } = result;
   const step = lesson.steps[activeStep];
   const stepProgress = Math.round(((activeStep + 1) / lesson.steps.length) * 100);
+
+  // Show the AI tutor intro first (once per lesson, if globally enabled)
+  if (!introSeenForThisLesson) {
+    return (
+      <AITutorIntro
+        lessonTitle={lesson.title}
+        courseTitle={c.title}
+        onStart={handleIntroStart}
+      />
+    );
+  }
 
   return (
     <div className="bg-background">
@@ -87,16 +142,43 @@ export function LessonView({ courseId, moduleId, lessonId }: { courseId: string;
               <span className="text-sm font-medium">Video Training</span>
               <span className="ml-auto text-xs text-muted-foreground">~{lesson.duration}</span>
             </div>
-            <div className="aspect-video bg-black">
+            <div className="relative aspect-video bg-black">
               <video
+                key={lesson.videoUrl}
                 src={lesson.videoUrl}
                 controls
                 playsInline
+                preload="metadata"
+                crossOrigin="anonymous"
                 className="h-full w-full"
-                poster=""
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  const fallback = el.nextElementSibling as HTMLElement | null;
+                  if (fallback) fallback.style.display = 'flex';
+                  el.style.display = 'none';
+                }}
               >
                 Your browser does not support the video tag.
               </video>
+              <div
+                style={{ display: 'none' }}
+                className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 text-center text-zinc-200"
+              >
+                <Video className="h-10 w-10 text-emerald-400" />
+                <p className="text-sm font-medium">Video preview unavailable</p>
+                <p className="max-w-md text-xs text-zinc-400">
+                  The walkthrough video could not be loaded right now. Don&apos;t worry — the full
+                  step-by-step procedure below is complete and self-contained.
+                </p>
+                <a
+                  href={lesson.videoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                >
+                  Open video in new tab
+                </a>
+              </div>
             </div>
             <CardContent className="p-4 text-sm text-muted-foreground">
               Watch the video walkthrough first, then follow the step-by-step guide below. Pause and code along — practice beats passive watching every time.
