@@ -50,5 +50,7 @@ test
 prompt
 
 server.log
-# Skills directory
-/skills/tool-results/
+
+# Skills and tool-results directories (internal, not part of the app)
+/skills/
+/tool-results/
