@@ -213,3 +213,21 @@ Stage Summary:
   (b) download the patch file and apply it on their own machine:
       `git am < fix-candidate-login-videos-tutor.patch && git push origin main`
 - After push, Vercel auto-deploys (~60s). All four issues will be resolved.
+
+---
+Task ID: 2
+Agent: main
+Task: Deploy fixes to Vercel
+
+Work Log:
+- Discovered GitHub repo had no Vercel webhooks (integration not connected)
+- GitHub PAT had expired from remote URL, restored with new token
+- Deployed directly via Vercel CLI with user-provided token
+- Build completed successfully in ~1 minute
+- Production URL: https://my-project-8u3c5daby-pmkshars-projects.vercel.app
+- Alias: https://my-project-fawn-mu.vercel.app
+- Cleaned up PAT from git remote URL for security
+
+Stage Summary:
+- Vercel deployment successful
+- All fixes now live: persistent AI tutor sidebar, Indian language TTS, slide switching, missing API route
