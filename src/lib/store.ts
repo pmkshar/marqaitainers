@@ -1195,6 +1195,8 @@ export const useAppStore = create<AppState>()(
         return {
           ...current,
           ...p,
+          // Never let a stale persisted currentUserId overwrite a live session
+          currentUserId: p.currentUserId ?? current.currentUserId,
           // Always ensure critical arrays exist (defensive against partial persistence)
           users: Array.isArray(p.users) && p.users.length > 0 ? p.users : current.users,
           roles: Array.isArray(p.roles) && p.roles.length > 0 ? p.roles : current.roles,
