@@ -231,3 +231,52 @@ Work Log:
 Stage Summary:
 - Vercel deployment successful
 - All fixes now live: persistent AI tutor sidebar, Indian language TTS, slide switching, missing API route
+
+---
+Task ID: dashboard-upgrade-subscription-gating
+Agent: main (Super Z)
+Task: Add missing dashboard sections (AI tutor greeting, Resume Studio, Interview Reports, My Certificates, Help & Support, Settings, Skill Radar), fix corporate login mismatch, add course content gating for subscription approval
+
+Work Log:
+- Examined current dashboard.tsx, auth-modal.tsx, store.ts, types.ts, seed-data.ts
+- Added SubscriptionRequest type to types.ts with pending/approved/rejected status tracking
+- Added corporate to RoleKey union type
+- Added approvedCourseIds and orgName fields to User type
+- Added resume_studio, interview_reports, settings to ViewName union
+- Added corporate seed user (u-corp-1, Rajesh Kumar, Acme Technologies)
+- Added corporate role to DEFAULT_ROLES in seed-data.ts
+- Added subscriptionRequests state + 5 new actions to store.ts (requestSubscription, approveSubscription, rejectSubscription, pendingSubscriptions, isCourseApproved)
+- Added 3 new navigation actions: openResumeStudio, openInterviewReports, openSettings
+- Updated register() to accept 'corporate' role with orgName parameter
+- Fixed auth-modal.tsx: Corporate quick login now uses u-corp-1 (was u-admin-1), corporate login form searches for corporate users by email
+- Rewrote dashboard.tsx with all missing sections:
+  * AITutorGreetingCard: Time-aware greeting, daily tip, quick-action buttons
+  * SkillRadarPanel: Overall skill bars (Problem Solving, Code Quality, etc.) + per-course proficiency
+  * ResumeStudioPanel: Pre-filled from profile/achievements, AI Improve button
+  * InterviewReportsPanel: Mock interview scores with status badges
+  * MyCertificatesPanel: Certificate cards with validation codes
+  * HelpSupportPanel: AI Tutor, Knowledge Base, Contact Support, Report Bug
+  * SettingsPanel: Email notifications, language, account management
+  * CorporateDashboard: Full dashboard with subscription status tracking
+  * AdminSubscriptionPanel: Approve/reject subscription requests
+- Added course content gating to course-detail.tsx:
+  * Candidates/corporate see locked content (lock icon, disabled buttons) until Super Admin approves
+  * "Request access" button for unapproved courses
+  * "Awaiting approval" banner for pending requests
+  * Approved users see normal Start/Test/Review buttons
+- Built 3 new full pages in portal-pages.tsx:
+  * ResumeStudioPage: Editor/Preview/Templates tabs with AI assist
+  * InterviewReportsPage: 4 mock interviews with detailed feedback scores
+  * SettingsPage: Profile, Notifications, Privacy & Data, Session management
+- Wired all 3 new views into page.tsx
+- Bumped persist version to 5 (forces clean re-seed for new schema)
+- Build clean (Next.js 16.1.3 Turbopack, 8.9s)
+- Pushed to GitHub main as bcd0b21
+
+Stage Summary:
+- All missing dashboard sections now live: AI Tutor Greeting Card, Skill Radar, Resume Studio, Interview Reports, My Certificates, Help & Support, Settings
+- Corporate login fixed: Quick login uses u-corp-1, login form defaults to rajesh@acmecorp.com
+- Course content gating: Candidates and corporate users cannot access lesson content until Super Admin approves their subscription request
+- Admin can approve/reject subscriptions from the admin dashboard
+- 3 new standalone pages: Resume Studio, Interview Reports, Settings
+- All changes pushed to GitHub and will auto-deploy via Vercel
