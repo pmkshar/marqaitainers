@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Clock, FileQuestion, PlayCircle, Star, Users, Video, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Clock, FileQuestion, PlayCircle, Star, Users, Video, Sparkles, Lock, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,17 @@ import { CourseIcon } from './navbar';
 export function CourseDetail({ courseId }: { courseId: string }) {
   const course = findCourse(courseId);
   const { openLesson, openQuiz, goHome, setTutorOpen, completedLessons } = useAppStore();
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const subscriptionRequests = useAppStore((s) => s.subscriptionRequests);
+  const requestSubscription = useAppStore((s) => s.requestSubscription);
+
+  // Check if the user needs subscription approval
+  const needsApproval = user && (user.role === 'candidate' || user.role === 'corporate');
+  const isApproved = user ? (user.role === 'super_admin' || user.role === 'tutor' || (user.approvedCourseIds ?? []).includes(courseId)) : false;
+  const hasPendingRequest = user ? subscriptionRequests.some((r) => r.userId === user.id && r.courseId === courseId && r.status === 'pending') : false;
+  const isEnrolled = user ? (user.enrolledCourseIds ?? []).includes(courseId) : false;
 
   if (!course) {
     return (
@@ -99,15 +110,36 @@ export function CourseDetail({ courseId }: { courseId: string }) {
                   <p className="mt-0.5">{course.instructor}</p>
                   <p className="text-xs text-white/80">{course.instructorTitle}</p>
                 </div>
-                <Button
-                  onClick={() => {
-                    const firstLesson = course.modules[0].lessons[0];
-                    openLesson(course.id, course.modules[0].id, firstLesson.id);
-                  }}
-                  className="w-full bg-white text-emerald-700 hover:bg-white/90"
-                >
-                  {completedCount > 0 ? 'Continue learning' : 'Start first lesson'} <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+                {isApproved || !needsApproval ? (
+                  <Button
+                    onClick={() => {
+                      const firstLesson = course.modules[0].lessons[0];
+                      openLesson(course.id, course.modules[0].id, firstLesson.id);
+                    }}
+                    className="w-full bg-white text-emerald-700 hover:bg-white/90"
+                  >
+                    {completedCount > 0 ? 'Continue learning' : 'Start first lesson'} <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : hasPendingRequest ? (
+                  <div className="rounded-lg bg-amber-500/20 p-3 text-center text-sm">
+                    <Clock className="mx-auto h-5 w-5 mb-1" />
+                    <p className="font-medium">Awaiting approval</p>
+                    <p className="text-xs text-white/80">Your subscription request has been sent to the Super Admin.</p>
+                  </div>
+                ) : isEnrolled ? (
+                  <div className="rounded-lg bg-amber-500/20 p-3 text-center text-sm">
+                    <Lock className="mx-auto h-5 w-5 mb-1" />
+                    <p className="font-medium">Content locked</p>
+                    <p className="text-xs text-white/80">Course content requires Super Admin approval before access is granted.</p>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => requestSubscription(courseId)}
+                    className="w-full bg-white text-emerald-700 hover:bg-white/90"
+                  >
+                    Request access <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     onClick={() => useAppStore.getState().openPricing()}
@@ -182,7 +214,27 @@ export function CourseDetail({ courseId }: { courseId: string }) {
               <h2 className="text-2xl font-bold tracking-tight">Course curriculum</h2>
               <span className="text-sm text-muted-foreground">{course.modules.length} modules</span>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">Click any lesson to start. Quizzes open after the lesson.</p>
+            {needsApproval && !isApproved && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                <Lock className="h-5 w-5 text-amber-600" />
+                <div>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Course content requires approval</p>
+                  <p className="text-xs text-muted-foreground">
+                    {hasPendingRequest
+                      ? 'Your subscription request is pending review by the Super Admin. You\'ll be notified once approved.'
+                      : 'Request access to this course. The Super Admin will review and approve your subscription before content becomes available.'}
+                  </p>
+                  {!hasPendingRequest && (
+                    <Button size="sm" onClick={() => requestSubscription(courseId)} className="mt-2 bg-amber-600 text-white hover:bg-amber-700">
+                      Request access
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isApproved || !needsApproval ? 'Click any lesson to start. Quizzes open after the lesson.' : 'Course content is locked until your subscription is approved.'}
+            </p>
 
             <Accordion type="multiple" defaultValue={[course.modules[0].id]} className="mt-6 space-y-3">
               {course.modules.map((module, mi) => (
@@ -209,36 +261,46 @@ export function CourseDetail({ courseId }: { courseId: string }) {
                             <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
                               isComplete
                                 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                : needsApproval && !isApproved
+                                ? 'bg-amber-500/10 text-amber-500'
                                 : 'bg-muted text-muted-foreground'
                             }`}>
-                              {isComplete ? <CheckCircle2 className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
+                              {isComplete ? <CheckCircle2 className="h-5 w-5" /> : needsApproval && !isApproved ? <Lock className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
                             </span>
                             <div className="min-w-0 flex-1">
                               <button
-                                onClick={() => openLesson(course.id, module.id, lesson.id)}
-                                className="block w-full text-left"
+                                onClick={() => isApproved || !needsApproval ? openLesson(course.id, module.id, lesson.id) : undefined}
+                                className={`block w-full text-left ${isApproved || !needsApproval ? 'hover:text-emerald-600 dark:hover:text-emerald-400' : 'opacity-60 cursor-not-allowed'}`}
                               >
-                                <p className="text-sm font-medium hover:text-emerald-600 dark:hover:text-emerald-400">{lesson.title}</p>
+                                <p className="text-sm font-medium">{lesson.title}</p>
                                 <p className="truncate text-xs text-muted-foreground">{lesson.description}</p>
                               </button>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
                               <span className="hidden text-xs text-muted-foreground sm:inline">{lesson.duration}</span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => openQuiz(course.id, module.id, lesson.id)}
-                                className="text-xs"
-                              >
-                                <FileQuestion className="mr-1 h-3.5 w-3.5" /> Test
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => openLesson(course.id, module.id, lesson.id)}
-                                className="bg-emerald-600 text-white hover:bg-emerald-700"
-                              >
-                                {isComplete ? 'Review' : 'Start'}
-                              </Button>
+                              {isApproved || !needsApproval ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => openQuiz(course.id, module.id, lesson.id)}
+                                    className="text-xs"
+                                  >
+                                    <FileQuestion className="mr-1 h-3.5 w-3.5" /> Test
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => openLesson(course.id, module.id, lesson.id)}
+                                    className="bg-emerald-600 text-white hover:bg-emerald-700"
+                                  >
+                                    {isComplete ? 'Review' : 'Start'}
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button size="sm" variant="outline" disabled className="opacity-60">
+                                  <Lock className="mr-1 h-3.5 w-3.5" /> Locked
+                                </Button>
+                              )}
                             </div>
                           </li>
                         );

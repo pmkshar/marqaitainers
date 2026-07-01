@@ -50,6 +50,13 @@ export const DEFAULT_ROLES: Role[] = [
     isSystem: true,
   },
   {
+    key: 'corporate',
+    name: 'Corporate Admin',
+    description: 'Organization admin — manages team training, tracks progress, assigns courses to teams. Courses require superadmin approval.',
+    permissions: ['content.learn', 'chat.aitutor', 'sessions.read', 'users.read'],
+    isSystem: true,
+  },
+  {
     key: 'guest',
     name: 'Guest',
     description: 'Unregistered visitor — can browse the catalog and pricing but cannot access lessons.',
@@ -222,6 +229,19 @@ export const SEED_USERS: User[] = [
     avatarColor: 'from-orange-500 to-red-600',
     enrolledCourseIds: [],
     createdAt: now - 3 * day,
+    status: 'active',
+  },
+  // Corporate admin
+  {
+    id: 'u-corp-1',
+    name: 'Rajesh Kumar',
+    email: 'rajesh@acmecorp.com',
+    role: 'corporate',
+    avatarColor: 'from-violet-500 to-purple-600',
+    enrolledCourseIds: ['java-fullstack', 'python-pro'],
+    approvedCourseIds: ['java-fullstack', 'python-pro'],
+    orgName: 'Acme Technologies Pvt. Ltd.',
+    createdAt: now - 45 * day,
     status: 'active',
   },
 ];

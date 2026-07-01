@@ -31,9 +31,9 @@ export function AuthModal() {
     setLoading(true);
     setTimeout(() => {
       const store = useAppStore.getState();
-      const ok = store.login(email || 'admin@marqai.dev');
+      const ok = store.login(email || 'priya@example.com');
       if (!ok) {
-        store.loginAs('u-admin-1');
+        store.loginAs('u-cand-1');
       }
       setLoading(false);
       close();
@@ -45,9 +45,11 @@ export function AuthModal() {
     setLoading(true);
     setTimeout(() => {
       const store = useAppStore.getState();
-      const ok = store.login(email || 'admin@marqai.dev');
+      // Try to find a corporate user by email
+      const ok = store.login(email || 'rajesh@acmecorp.com');
       if (!ok) {
-        store.loginAs('u-admin-1');
+        // Fall back to the seed corporate user
+        store.loginAs('u-corp-1');
       }
       setLoading(false);
       close();
@@ -63,8 +65,9 @@ export function AuthModal() {
         store.register(
           name || 'Organization Admin',
           email || `org-${Date.now()}@example.com`,
-          'candidate',
-          orgName ? `Organization: ${orgName}` : undefined
+          'corporate',
+          undefined,
+          orgName || 'My Organization'
         );
       } else {
         store.register(
@@ -81,7 +84,6 @@ export function AuthModal() {
 
   const quickLogin = (userId: string) => {
     // Use setTimeout to ensure the state change persists before the dialog closes
-    // and triggers any re-renders that might reset the Zustand persist
     setTimeout(() => {
       useAppStore.getState().loginAs(userId);
     }, 0);
@@ -189,7 +191,7 @@ export function AuthModal() {
                   icon={Building2}
                   label="Corporate"
                   color="from-violet-500 to-purple-600"
-                  onClick={() => quickLogin('u-admin-1')}
+                  onClick={() => quickLogin('u-corp-1')}
                 />
                 <QuickLogin
                   icon={Users}
@@ -281,7 +283,7 @@ export function AuthModal() {
                     />
                     <p className="text-[10px] text-muted-foreground">
                       Register your organization to manage team training, assign courses, and track progress across your teams.
-                      Our team will verify and activate your corporate account within 24 hours.
+                      Course subscriptions require Super Admin approval before content becomes accessible.
                     </p>
                   </div>
                 )}

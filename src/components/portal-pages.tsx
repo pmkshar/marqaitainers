@@ -821,3 +821,386 @@ export function FeaturesPage() {
 function Activity(props: { className?: string }) {
   return <Trophy {...props} />;
 }
+
+// ============================================================
+// Resume Studio Page
+// ============================================================
+
+export function ResumeStudioPage() {
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const completedLessons = useAppStore((s) => s.completedLessons);
+  const certificates = useAppStore((s) => s.certificates);
+  const myCerts = currentUserId ? certificates.filter((c) => c.userId === currentUserId) : [];
+  const goHome = useAppStore((s) => s.goHome);
+
+  const [activeTab, setActiveTab] = useState('editor');
+  const [resumeName, setResumeName] = useState(user?.name ?? '');
+  const [resumeEmail, setResumeEmail] = useState(user?.email ?? '');
+  const [resumeSummary, setResumeSummary] = useState('Passionate software developer with hands-on experience in modern web technologies. Skilled in building scalable applications and solving complex problems through clean code.');
+  const [resumeSkills, setResumeSkills] = useState('JavaScript, TypeScript, React, Node.js, Python, Git, REST APIs, SQL, Docker, Agile');
+  const [resumeExperience, setResumeExperience] = useState('Software Development Intern — ABC Corp (6 months)\n- Built responsive web applications using React and TypeScript\n- Collaborated with cross-functional teams in an Agile environment\n- Reduced page load times by 40% through code optimization');
+  const [resumeEducation, setResumeEducation] = useState('B.Tech in Computer Science — XYZ University\nRelevant coursework: Data Structures, Algorithms, Operating Systems, Database Management');
+
+  if (!user) {
+    return (
+      <div className="grid min-h-[60vh] place-items-center px-4">
+        <Card className="max-w-md text-center">
+          <CardContent className="p-8">
+            <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h2 className="mt-4 text-xl font-semibold">Sign in to use Resume Studio</h2>
+            <Button onClick={() => useAppStore.getState().setAuthOpen(true, 'login')} className="mt-4 bg-emerald-600 text-white hover:bg-emerald-700">Sign in</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-background">
+      <section className="bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <button onClick={goHome} className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white">
+            <ArrowLeft className="h-4 w-4" /> Home
+          </button>
+          <h1 className="mt-3 text-3xl font-bold">Resume Studio</h1>
+          <p className="mt-1 text-white/80">Build an ATS-friendly resume with AI assistance. We pre-fill from your profile and achievements.</p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="editor">Editor</TabsTrigger>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="templates">Templates</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="editor" className="mt-6 space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader className="pb-3"><CardTitle className="text-base">Personal Information</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <div><Label className="text-sm">Full Name</Label><Input value={resumeName} onChange={(e) => setResumeName(e.target.value)} /></div>
+                    <div><Label className="text-sm">Email</Label><Input value={resumeEmail} onChange={(e) => setResumeEmail(e.target.value)} /></div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3"><CardTitle className="text-base">Professional Summary</CardTitle></CardHeader>
+                  <CardContent>
+                    <textarea className="w-full min-h-[120px] rounded-md border bg-background p-3 text-sm" value={resumeSummary} onChange={(e) => setResumeSummary(e.target.value)} />
+                    <Button size="sm" variant="outline" className="mt-2" onClick={() => useAppStore.getState().setTutorOpen(true)}>
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" /> AI Improve
+                    </Button>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3"><CardTitle className="text-base">Skills</CardTitle></CardHeader>
+                  <CardContent className="space-y-2">
+                    <textarea className="w-full min-h-[80px] rounded-md border bg-background p-3 text-sm" value={resumeSkills} onChange={(e) => setResumeSkills(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">Auto-detected from completed lessons: {completedLessons.length} skills</p>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader className="pb-3"><CardTitle className="text-base">Experience</CardTitle></CardHeader>
+                  <CardContent>
+                    <textarea className="w-full min-h-[160px] rounded-md border bg-background p-3 text-sm" value={resumeExperience} onChange={(e) => setResumeExperience(e.target.value)} />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3"><CardTitle className="text-base">Education & Certifications</CardTitle></CardHeader>
+                  <CardContent className="space-y-2">
+                    <textarea className="w-full min-h-[120px] rounded-md border bg-background p-3 text-sm" value={resumeEducation} onChange={(e) => setResumeEducation(e.target.value)} />
+                    {myCerts.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Your Certificates (click to add)</p>
+                        {myCerts.map((c) => {
+                          const course = findCourse(c.courseId);
+                          return (
+                            <div key={c.id} className="flex items-center gap-2 rounded border p-2 text-xs">
+                              <Award className="h-3 w-3 text-amber-600" />
+                              <span>{course?.title ?? c.courseId} — {c.scorePct}%</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="preview" className="mt-6">
+            <Card className="mx-auto max-w-3xl">
+              <CardContent className="p-8">
+                <h2 className="text-2xl font-bold">{resumeName}</h2>
+                <p className="text-sm text-muted-foreground">{resumeEmail}</p>
+                <hr className="my-4" />
+                <h3 className="text-lg font-semibold">Professional Summary</h3>
+                <p className="mt-1 text-sm text-muted-foreground whitespace-pre-line">{resumeSummary}</p>
+                <hr className="my-4" />
+                <h3 className="text-lg font-semibold">Skills</h3>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {resumeSkills.split(',').map((s, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">{s.trim()}</Badge>
+                  ))}
+                </div>
+                <hr className="my-4" />
+                <h3 className="text-lg font-semibold">Experience</h3>
+                <p className="mt-1 text-sm text-muted-foreground whitespace-pre-line">{resumeExperience}</p>
+                <hr className="my-4" />
+                <h3 className="text-lg font-semibold">Education & Certifications</h3>
+                <p className="mt-1 text-sm text-muted-foreground whitespace-pre-line">{resumeEducation}</p>
+                {myCerts.map((c) => {
+                  const course = findCourse(c.courseId);
+                  return (
+                    <div key={c.id} className="mt-2 flex items-center gap-2 text-sm">
+                      <Award className="h-4 w-4 text-amber-600" />
+                      <span>{course?.title ?? c.courseId} — Score: {c.scorePct}% · Code: {c.code}</span>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="templates" className="mt-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+              {['Professional', 'Modern', 'Creative'].map((tpl) => (
+                <Card key={tpl} className="cursor-pointer transition-all hover:shadow-lg hover:border-violet-500/50">
+                  <CardContent className="p-6 text-center">
+                    <FileText className="mx-auto h-12 w-12 text-violet-500" />
+                    <p className="mt-3 font-semibold">{tpl}</p>
+                    <p className="text-xs text-muted-foreground">ATS-optimized {tpl.toLowerCase()} template</p>
+                    <Button size="sm" variant="outline" className="mt-3">Use template</Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </section>
+    </div>
+  );
+}
+
+// ============================================================
+// Interview Reports Page
+// ============================================================
+
+export function InterviewReportsPage() {
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const goHome = useAppStore((s) => s.goHome);
+
+  const mockInterviews = [
+    { id: '1', role: 'Frontend Developer', company: 'TechCorp', date: Date.now() - 2 * 86400000, score: 78, status: 'completed' as const,
+      feedback: { communication: 82, technical: 75, problemSolving: 80, overall: 78 },
+      strengths: ['Clear explanation of React hooks', 'Good understanding of CSS layout systems'],
+      improvements: ['Deepen knowledge of Webpack internals', 'Practice more system design questions'] },
+    { id: '2', role: 'Full Stack Engineer', company: 'StartupXYZ', date: Date.now() - 7 * 86400000, score: 85, status: 'completed' as const,
+      feedback: { communication: 88, technical: 84, problemSolving: 82, overall: 85 },
+      strengths: ['Strong REST API design skills', 'Excellent database normalization understanding'],
+      improvements: ['Work on real-time WebSocket patterns', 'Practice more behavioral questions'] },
+    { id: '3', role: 'Backend Developer', company: 'BigCo Inc', date: Date.now() - 14 * 86400000, score: 72, status: 'completed' as const,
+      feedback: { communication: 68, technical: 78, problemSolving: 70, overall: 72 },
+      strengths: ['Solid understanding of distributed systems', 'Good Java fundamentals'],
+      improvements: ['Improve whiteboard communication', 'Practice more coding under time pressure'] },
+    { id: '4', role: 'System Design', company: 'CloudScale', date: Date.now() - 21 * 86400000, score: 90, status: 'completed' as const,
+      feedback: { communication: 92, technical: 88, problemSolving: 90, overall: 90 },
+      strengths: ['Excellent scalability thinking', 'Great trade-off analysis'],
+      improvements: ['Include more cost-optimization considerations'] },
+  ];
+
+  return (
+    <div className="bg-background">
+      <section className="bg-gradient-to-br from-sky-500 to-cyan-600 text-white">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <button onClick={goHome} className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white">
+            <ArrowLeft className="h-4 w-4" /> Home
+          </button>
+          <h1 className="mt-3 text-3xl font-bold">Interview Reports</h1>
+          <p className="mt-1 text-white/80">Track your mock interview performance, identify strengths, and improve weak areas with AI-powered feedback.</p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+        {/* Summary stats */}
+        <div className="grid gap-3 sm:grid-cols-4">
+          <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold text-sky-600">{mockInterviews.length}</p><p className="text-xs text-muted-foreground">Interviews taken</p></CardContent></Card>
+          <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold text-emerald-600">{Math.round(mockInterviews.reduce((s, i) => s + i.score, 0) / mockInterviews.length)}%</p><p className="text-xs text-muted-foreground">Average score</p></CardContent></Card>
+          <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold text-amber-600">{mockInterviews.filter((i) => i.score >= 80).length}</p><p className="text-xs text-muted-foreground">Passed (80%+)</p></CardContent></Card>
+          <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold text-violet-600">92%</p><p className="text-xs text-muted-foreground">Best score</p></CardContent></Card>
+        </div>
+
+        {/* Interview cards */}
+        {mockInterviews.map((interview) => (
+          <Card key={interview.id}>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold">{interview.role}</h3>
+                  <p className="text-sm text-muted-foreground">{interview.company} · {new Date(interview.date).toLocaleDateString()}</p>
+                </div>
+                <Badge className={interview.score >= 80 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'}>
+                  {interview.score}%
+                </Badge>
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-4">
+                {Object.entries(interview.feedback).map(([key, val]) => (
+                  <div key={key} className="rounded-lg border p-2.5 text-center">
+                    <p className="text-lg font-bold">{val}%</p>
+                    <p className="text-[11px] capitalize text-muted-foreground">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Strengths</p>
+                  <ul className="mt-1 space-y-1">
+                    {interview.strengths.map((s, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground"><Check className="mt-0.5 h-3 w-3 text-emerald-600 shrink-0" />{s}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Areas to improve</p>
+                  <ul className="mt-1 space-y-1">
+                    {interview.improvements.map((s, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground"><Trophy className="mt-0.5 h-3 w-3 text-amber-600 shrink-0" />{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        <Card className="border-sky-500/30 bg-sky-500/5">
+          <CardContent className="p-6 text-center">
+            <Sparkles className="mx-auto h-10 w-10 text-sky-600" />
+            <h3 className="mt-3 text-lg font-semibold">Start a new mock interview</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Practice with AI and get detailed feedback on your performance.</p>
+            <Button onClick={() => useAppStore.getState().setTutorOpen(true)} className="mt-3 bg-sky-600 text-white hover:bg-sky-700">
+              <Sparkles className="mr-2 h-4 w-4" /> Start AI Mock Interview
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
+}
+
+// ============================================================
+// Settings Page
+// ============================================================
+
+export function SettingsPage() {
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const goHome = useAppStore((s) => s.goHome);
+  const logout = useAppStore((s) => s.logout);
+
+  const [emailNotifs, setEmailNotifs] = useState(true);
+  const [pushNotifs, setPushNotifs] = useState(true);
+  const [weeklyDigest, setWeeklyDigest] = useState(false);
+
+  if (!user) {
+    return (
+      <div className="grid min-h-[60vh] place-items-center px-4">
+        <Card className="max-w-md text-center">
+          <CardContent className="p-8">
+            <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h2 className="mt-4 text-xl font-semibold">Sign in to view settings</h2>
+            <Button onClick={() => useAppStore.getState().setAuthOpen(true, 'login')} className="mt-4 bg-emerald-600 text-white hover:bg-emerald-700">Sign in</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-background">
+      <section className="bg-gradient-to-br from-slate-600 to-slate-700 text-white">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <button onClick={goHome} className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white">
+            <ArrowLeft className="h-4 w-4" /> Home
+          </button>
+          <h1 className="mt-3 text-3xl font-bold">Settings</h1>
+          <p className="mt-1 text-white/80">Manage your account, notifications, and preferences.</p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+        {/* Profile */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Profile</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16"><AvatarFallback className={`bg-gradient-to-br ${user.avatarColor} text-white text-2xl font-bold`}>{user.name.charAt(0)}</AvatarFallback></Avatar>
+              <div>
+                <p className="font-semibold">{user.name}</p>
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+                <Badge className="mt-1">{user.role === 'super_admin' ? 'Super Admin' : user.role === 'tutor' ? 'Tutor' : user.role === 'corporate' ? 'Corporate' : 'Candidate'}</Badge>
+              </div>
+            </div>
+            {user.orgName && <p className="text-sm text-muted-foreground">Organization: {user.orgName}</p>}
+          </CardContent>
+        </Card>
+
+        {/* Notifications */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Notifications</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm font-medium">Email notifications</p><p className="text-xs text-muted-foreground">Receive course updates & reminders via email</p></div>
+              <Switch checked={emailNotifs} onCheckedChange={setEmailNotifs} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm font-medium">Push notifications</p><p className="text-xs text-muted-foreground">Browser push for session reminders & deadlines</p></div>
+              <Switch checked={pushNotifs} onCheckedChange={setPushNotifs} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm font-medium">Weekly digest</p><p className="text-xs text-muted-foreground">Get a summary of your progress every Monday</p></div>
+              <Switch checked={weeklyDigest} onCheckedChange={setWeeklyDigest} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Privacy */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Privacy & Data</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div><p className="text-sm font-medium">Download my data</p><p className="text-xs text-muted-foreground">Export all your data (GDPR compliant)</p></div>
+              <Button size="sm" variant="outline">Export</Button>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div><p className="text-sm font-medium">Delete account</p><p className="text-xs text-muted-foreground">Permanently remove your account and data</p></div>
+              <Button size="sm" variant="outline" className="text-rose-600 hover:bg-rose-50">Delete</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Session */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Session</CardTitle></CardHeader>
+          <CardContent>
+            <Button onClick={logout} variant="outline" className="w-full">Sign out</Button>
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
+}
+
+function Label({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <label className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className ?? ''}`}>{children}</label>;
+}

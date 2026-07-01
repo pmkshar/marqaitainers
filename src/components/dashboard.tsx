@@ -6,6 +6,9 @@ import {
   TrendingUp, Users, MessageSquare, Bell, CheckCircle2, PlayCircle, FileQuestion,
   Trophy, Target, Flame, ChevronRight, Settings, ShieldCheck, DollarSign,
   GraduationCap, BarChart3, Star, Zap, BookMarked, Activity as ActivityIcon,
+  FileText, HelpCircle, Radar, Building2, Briefcase, ClipboardList,
+  Megaphone, Lock, X, Eye, EyeOff, Sun, Moon, Globe, BellRing,
+  LayoutDashboard, UserCog, Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +17,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/lib/store';
 import { COURSES, findCourse, getAllLessons } from '@/lib/courses';
 import { CourseIcon } from './navbar';
@@ -73,6 +80,7 @@ export function Dashboard() {
         </button>
 
         {user.role === 'candidate' && <CandidateDashboard />}
+        {user.role === 'corporate' && <CorporateDashboard />}
         {user.role === 'tutor' && <TutorDashboard />}
         {user.role === 'super_admin' && <AdminDashboard />}
       </div>
@@ -91,10 +99,11 @@ function DashboardHeader() {
   const completedLessons = useAppStore((s) => s.completedLessons);
   if (!user) return null;
 
-  const roleLabel = user.role === 'super_admin' ? 'Super Admin' : user.role === 'tutor' ? 'Human Tutor' : 'Candidate';
+  const roleLabel = user.role === 'super_admin' ? 'Super Admin' : user.role === 'tutor' ? 'Human Tutor' : user.role === 'corporate' ? 'Corporate Admin' : 'Candidate';
   const roleGradient =
     user.role === 'super_admin' ? 'from-rose-500 to-pink-600'
     : user.role === 'tutor' ? 'from-sky-500 to-cyan-600'
+    : user.role === 'corporate' ? 'from-violet-500 to-purple-600'
     : 'from-emerald-500 to-teal-600';
 
   return (
@@ -113,6 +122,7 @@ function DashboardHeader() {
                 {user.role === 'super_admin' && <ShieldCheck className="h-3 w-3" />}
                 {user.role === 'tutor' && <Users className="h-3 w-3" />}
                 {user.role === 'candidate' && <GraduationCap className="h-3 w-3" />}
+                {user.role === 'corporate' && <Building2 className="h-3 w-3" />}
                 {roleLabel}
               </span>
               {user.status === 'pending' && (
@@ -122,15 +132,17 @@ function DashboardHeader() {
               )}
             </div>
             <p className="mt-1 text-sm text-white/85">{user.email}</p>
+            {user.orgName && <p className="text-sm text-white/75">{user.orgName}</p>}
             <p className="mt-0.5 text-xs text-white/70">
               Joined {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
               {user.role === 'candidate' && ` · ${completedLessons.length} lessons completed · ${user.enrolledCourseIds?.length ?? 0} courses enrolled`}
+              {user.role === 'corporate' && ` · ${user.enrolledCourseIds?.length ?? 0} courses assigned · ${(user.approvedCourseIds ?? []).length} approved`}
               {user.role === 'tutor' && user.tutorProfile && ` · ${user.tutorProfile.sessionsCompleted} sessions · ★ ${user.tutorProfile.rating}`}
               {user.role === 'super_admin' && ' · Full platform access'}
             </p>
           </div>
           <div className="flex gap-2">
-            {user.role === 'candidate' && (
+            {(user.role === 'candidate' || user.role === 'corporate') && (
               <Button onClick={() => useAppStore.getState().setTutorOpen(true)} className="bg-white/15 text-white hover:bg-white/25 backdrop-blur">
                 <Sparkles className="mr-1.5 h-4 w-4" /> Ask AI Tutor
               </Button>
@@ -151,11 +163,383 @@ function DashboardHeader() {
         {/* Quick stats strip */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {user.role === 'candidate' && <CandidateQuickStats />}
+          {user.role === 'corporate' && <CorporateQuickStats />}
           {user.role === 'tutor' && <TutorQuickStats />}
           {user.role === 'super_admin' && <AdminQuickStats />}
         </div>
       </div>
     </section>
+  );
+}
+
+// ============================================================
+// AI Tutor Greeting Card
+// ============================================================
+
+function AITutorGreetingCard() {
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const [dismissed, setDismissed] = useState(false);
+
+  if (dismissed || !user) return null;
+
+  const firstName = user.name.split(' ')[0];
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  const tips = [
+    'Try asking the AI Tutor to explain a concept in simple terms — it adapts to your level!',
+    'Use the Resume Studio to craft a polished CV tailored to your dream role.',
+    'Practice mock interviews in Interview Reports to build confidence before the real thing.',
+    'Check your Skill Radar to see where you shine and where to focus next.',
+    'Complete lessons consistently to unlock badges and climb the leaderboard!',
+  ];
+  const tip = tips[Math.floor(Date.now() / 86400000) % tips.length];
+
+  return (
+    <Card className="relative overflow-hidden border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30">
+      <button onClick={() => setDismissed(true)} className="absolute right-3 top-3 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+        <X className="h-4 w-4" />
+      </button>
+      <CardContent className="p-5">
+        <div className="flex items-start gap-4">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
+            <Sparkles className="h-7 w-7" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{greeting}, {firstName}! 👋</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your AI Tutor is ready to guide you through today&apos;s learning. Whether it&apos;s debugging code, prepping for interviews, or building your resume — I&apos;m here 24/7.
+            </p>
+            <p className="mt-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">💡 Tip: {tip}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => useAppStore.getState().setTutorOpen(true)} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Ask AI Tutor
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => useAppStore.getState().openResumeStudio()}>
+                <FileText className="mr-1.5 h-3.5 w-3.5" /> Resume Studio
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => useAppStore.getState().openInterviewReports()}>
+                <ClipboardList className="mr-1.5 h-3.5 w-3.5" /> Mock Interviews
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Skill Radar
+// ============================================================
+
+function SkillRadarPanel() {
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const completedLessons = useAppStore((s) => s.completedLessons);
+  const passedLessonTests = useAppStore((s) => s.passedLessonTests);
+
+  if (!user) return null;
+  const enrolledCourseIds = user.enrolledCourseIds ?? [];
+
+  // Build skill data from enrolled courses
+  const skills = enrolledCourseIds.map((cid) => {
+    const course = findCourse(cid);
+    if (!course) return null;
+    const lessons = getAllLessons(cid);
+    const done = lessons.filter((l) => completedLessons.includes(l.lessonId)).length;
+    const passed = lessons.filter((l) => passedLessonTests.includes(l.lessonId)).length;
+    const pct = lessons.length ? Math.round((done / lessons.length) * 100) : 0;
+    return {
+      id: cid,
+      title: course.title,
+      icon: course.icon,
+      gradient: course.gradient,
+      progress: pct,
+      lessonsTotal: lessons.length,
+      lessonsDone: done,
+      testsPassed: passed,
+    };
+  }).filter(Boolean) as { id: string; title: string; icon: string; gradient: string; progress: number; lessonsTotal: number; lessonsDone: number; testsPassed: number }[];
+
+  // Add overall metrics
+  const overallSkills = [
+    { name: 'Problem Solving', level: Math.min(100, Math.round((completedLessons.length / 10) * 40 + 20)), color: 'from-emerald-500 to-teal-600' },
+    { name: 'Code Quality', level: Math.min(100, Math.round((passedLessonTests.length / 8) * 40 + 15)), color: 'from-sky-500 to-cyan-600' },
+    { name: 'System Design', level: Math.min(100, Math.round((completedLessons.length / 15) * 30 + 10)), color: 'from-violet-500 to-purple-600' },
+    { name: 'Testing', level: Math.min(100, Math.round((passedLessonTests.length / 6) * 35 + 10)), color: 'from-amber-500 to-orange-600' },
+    { name: 'Communication', level: Math.min(100, Math.round((completedLessons.length / 20) * 25 + 25)), color: 'from-rose-500 to-pink-600' },
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base"><Radar className="h-4 w-4 text-emerald-600" /> Skill Radar</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Radar visualization (simplified as progress bars) */}
+        <div className="space-y-3">
+          {overallSkills.map((skill) => (
+            <div key={skill.name}>
+              <div className="mb-1 flex items-center justify-between text-xs">
+                <span className="font-medium">{skill.name}</span>
+                <span className="text-muted-foreground">{skill.level}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div className={`h-full bg-gradient-to-r ${skill.color} transition-all`} style={{ width: `${skill.level}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <Separator />
+
+        {/* Per-course skills */}
+        <div>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Course Proficiency</p>
+          {skills.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Enroll in courses to track your skills.</p>
+          ) : (
+            <div className="space-y-2">
+              {skills.map((s) => (
+                <div key={s.id} className="flex items-center gap-2">
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded bg-gradient-to-br ${s.gradient} text-white`}>
+                    <CourseIcon name={s.icon} className="h-3 w-3" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-0.5 flex justify-between text-[11px]">
+                      <span className="truncate font-medium">{s.title}</span>
+                      <span className="text-muted-foreground">{s.progress}%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className={`h-full bg-gradient-to-r ${s.gradient}`} style={{ width: `${s.progress}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// My Certificates Panel (dashboard)
+// ============================================================
+
+function MyCertificatesPanel() {
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const certificates = useAppStore((s) => s.certificates);
+  const myCerts = currentUserId ? certificates.filter((c) => c.userId === currentUserId) : [];
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base"><Award className="h-4 w-4 text-amber-600" /> My Certificates</CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => useAppStore.getState().openCertificates()} className="text-xs">View all <ChevronRight className="h-3 w-3" /></Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {myCerts.length === 0 ? (
+          <div className="py-4 text-center">
+            <Award className="mx-auto h-8 w-8 text-muted-foreground" />
+            <p className="mt-2 text-sm text-muted-foreground">No certificates yet</p>
+            <p className="text-xs text-muted-foreground">Complete a course to earn your first certificate!</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {myCerts.map((c) => {
+              const course = findCourse(c.courseId);
+              return (
+                <div key={c.id} className="flex items-center gap-3 rounded-lg border bg-amber-500/5 p-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white">
+                    <Award className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{course?.title ?? c.courseId}</p>
+                    <p className="text-xs text-muted-foreground">Score: {c.scorePct}% · Code: {c.code}</p>
+                  </div>
+                  <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 dark:text-amber-300">{c.template}</Badge>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Resume Studio Panel (dashboard)
+// ============================================================
+
+function ResumeStudioPanel() {
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const completedLessons = useAppStore((s) => s.completedLessons);
+  const certificates = useAppStore((s) => s.certificates);
+  const myCerts = currentUserId ? certificates.filter((c) => c.userId === currentUserId) : [];
+
+  if (!user) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base"><Briefcase className="h-4 w-4 text-violet-600" /> Resume Studio</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">Build a polished, ATS-friendly resume with AI assistance. We pre-fill from your profile and course achievements.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border p-2.5 text-center">
+            <p className="text-lg font-bold">{completedLessons.length}</p>
+            <p className="text-[11px] text-muted-foreground">Skills</p>
+          </div>
+          <div className="rounded-lg border p-2.5 text-center">
+            <p className="text-lg font-bold">{myCerts.length}</p>
+            <p className="text-[11px] text-muted-foreground">Certifications</p>
+          </div>
+        </div>
+        <Button onClick={() => useAppStore.getState().openResumeStudio()} className="w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700">
+          <FileText className="mr-2 h-4 w-4" /> Open Resume Studio
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Interview Reports Panel (dashboard)
+// ============================================================
+
+function InterviewReportsPanel() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base"><ClipboardList className="h-4 w-4 text-sky-600" /> Interview Reports</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">Practice mock interviews with AI and track your performance over time. Get detailed feedback on communication, technical depth, and problem-solving.</p>
+        <div className="space-y-2">
+          {[
+            { role: 'Frontend Developer', score: 78, date: '2 days ago', status: 'completed' },
+            { role: 'Full Stack Engineer', score: 85, date: '1 week ago', status: 'completed' },
+            { role: 'System Design', score: 0, date: '', status: 'pending' },
+          ].map((interview, i) => (
+            <div key={i} className="flex items-center gap-3 rounded-lg border p-2.5">
+              <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${interview.status === 'completed' ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300' : 'bg-muted text-muted-foreground'}`}>
+                <ClipboardList className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{interview.role}</p>
+                <p className="text-xs text-muted-foreground">{interview.status === 'completed' ? `Score: ${interview.score}% · ${interview.date}` : 'Not yet taken'}</p>
+              </div>
+              {interview.status === 'completed' && (
+                <Badge variant="secondary" className={interview.score >= 80 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'}>
+                  {interview.score}%
+                </Badge>
+              )}
+            </div>
+          ))}
+        </div>
+        <Button onClick={() => useAppStore.getState().openInterviewReports()} variant="outline" size="sm" className="w-full">
+          View all reports <ChevronRight className="ml-1 h-3 w-3" />
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Help & Support Panel
+// ============================================================
+
+function HelpSupportPanel() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base"><HelpCircle className="h-4 w-4 text-rose-600" /> Help & Support</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {[
+          { icon: MessageSquare, label: 'Chat with AI Tutor', desc: 'Get instant help 24/7', action: () => useAppStore.getState().setTutorOpen(true) },
+          { icon: BookOpen, label: 'Knowledge Base', desc: 'FAQs, guides & tutorials', action: () => {} },
+          { icon: MessageSquare, label: 'Contact Support', desc: 'Email us at help@marqai.dev', action: () => {} },
+          { icon: Megaphone, label: 'Report a Bug', desc: 'Help us improve the platform', action: () => {} },
+        ].map((item, i) => (
+          <button key={i} onClick={item.action} className="flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-colors hover:bg-accent">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-rose-500/15 text-rose-700 dark:text-rose-300">
+              <item.icon className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">{item.label}</p>
+              <p className="text-xs text-muted-foreground">{item.desc}</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Settings Panel (dashboard)
+// ============================================================
+
+function SettingsPanel() {
+  const [emailNotifs, setEmailNotifs] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+  const [language, setLanguage] = useState('English');
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base"><Settings className="h-4 w-4 text-muted-foreground" /> Settings</CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => useAppStore.getState().openSettings()} className="text-xs">Full settings <ChevronRight className="h-3 w-3" /></Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between rounded-lg border p-2.5">
+          <div className="flex items-center gap-2">
+            <BellRing className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Email notifications</p>
+              <p className="text-[11px] text-muted-foreground">Receive course updates & reminders</p>
+            </div>
+          </div>
+          <Switch checked={emailNotifs} onCheckedChange={setEmailNotifs} />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border p-2.5">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Language</p>
+              <p className="text-[11px] text-muted-foreground">Interface language</p>
+            </div>
+          </div>
+          <span className="text-sm text-muted-foreground">{language}</span>
+        </div>
+        <div className="flex items-center justify-between rounded-lg border p-2.5">
+          <div className="flex items-center gap-2">
+            <UserCog className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Account</p>
+              <p className="text-[11px] text-muted-foreground">Password, privacy, data export</p>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -166,12 +550,23 @@ function DashboardHeader() {
 function CandidateDashboard() {
   return (
     <div className="space-y-6 pt-6">
+      {/* AI Tutor Greeting Card */}
+      <AITutorGreetingCard />
+
       {/* Quick actions row */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <QuickAction icon={PlayCircle} label="Continue learning" desc="Pick up where you left off" color="from-emerald-500 to-teal-600" onClick={() => useAppStore.getState().openMyLearning()} />
         <QuickAction icon={Calendar} label="My calendar" desc="Sessions, deadlines, live classes" color="from-sky-500 to-cyan-600" onClick={() => useAppStore.getState().openCalendar()} />
         <QuickAction icon={Trophy} label="Achievements" desc="Badges & certificates" color="from-amber-500 to-orange-600" onClick={() => useAppStore.getState().openAchievements()} />
         <QuickAction icon={Users} label="Community" desc="Members, groups, messages" color="from-violet-500 to-purple-600" onClick={() => useAppStore.getState().openMembers()} />
+      </div>
+
+      {/* Second row: Resume Studio, Interview Reports, My Certificates, Settings */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <QuickAction icon={FileText} label="Resume Studio" desc="AI-powered resume builder" color="from-violet-500 to-purple-600" onClick={() => useAppStore.getState().openResumeStudio()} />
+        <QuickAction icon={ClipboardList} label="Interview Reports" desc="Mock interview scores" color="from-sky-500 to-cyan-600" onClick={() => useAppStore.getState().openInterviewReports()} />
+        <QuickAction icon={Award} label="My Certificates" desc="Share & validate certs" color="from-amber-500 to-orange-600" onClick={() => useAppStore.getState().openCertificates()} />
+        <QuickAction icon={Settings} label="Settings" desc="Notifications & privacy" color="from-slate-500 to-slate-600" onClick={() => useAppStore.getState().openSettings()} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -182,14 +577,147 @@ function CandidateDashboard() {
           <AssignmentsPanel />
         </div>
 
-        {/* Right column: activity + achievements + recommendations */}
+        {/* Right column: skill radar + achievements + resume studio + help */}
         <div className="space-y-6">
+          <SkillRadarPanel />
+          <ResumeStudioPanel />
+          <InterviewReportsPanel />
+          <MyCertificatesPanel />
+          <HelpSupportPanel />
+          <SettingsPanel />
           <ActivityPanel />
           <MiniAchievementsPanel />
           <RecommendationsPanel />
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// Corporate dashboard
+// ============================================================
+
+function CorporateDashboard() {
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const subscriptionRequests = useAppStore((s) => s.subscriptionRequests);
+
+  if (!user) return null;
+  const myRequests = subscriptionRequests.filter((r) => r.userId === user.id);
+
+  return (
+    <div className="space-y-6 pt-6">
+      {/* AI Tutor Greeting Card */}
+      <AITutorGreetingCard />
+
+      {/* Quick actions row */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <QuickAction icon={PlayCircle} label="Continue learning" desc="Pick up where you left off" color="from-emerald-500 to-teal-600" onClick={() => useAppStore.getState().openMyLearning()} />
+        <QuickAction icon={Calendar} label="My calendar" desc="Sessions, deadlines, live classes" color="from-sky-500 to-cyan-600" onClick={() => useAppStore.getState().openCalendar()} />
+        <QuickAction icon={FileText} label="Resume Studio" desc="AI-powered resume builder" color="from-violet-500 to-purple-600" onClick={() => useAppStore.getState().openResumeStudio()} />
+        <QuickAction icon={Settings} label="Settings" desc="Notifications & privacy" color="from-slate-500 to-slate-600" onClick={() => useAppStore.getState().openSettings()} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          {/* Subscription Status */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base"><Lock className="h-4 w-4 text-violet-600" /> Course Subscriptions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {myRequests.length === 0 ? (
+                <div className="py-4 text-center">
+                  <Lock className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="mt-2 text-sm text-muted-foreground">No subscription requests yet</p>
+                  <p className="text-xs text-muted-foreground">Browse the catalog and request access to courses. The Super Admin will review and approve.</p>
+                  <Button onClick={() => useAppStore.getState().goHome()} variant="outline" size="sm" className="mt-2">Browse courses</Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {myRequests.map((r) => {
+                    const course = findCourse(r.courseId);
+                    const statusColor = r.status === 'approved' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                      : r.status === 'rejected' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
+                      : 'bg-amber-500/15 text-amber-700 dark:text-amber-300';
+                    return (
+                      <div key={r.id} className="flex items-center gap-3 rounded-lg border p-3">
+                        {course ? (
+                          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-gradient-to-br ${course.gradient} text-white`}>
+                            <CourseIcon name={course.icon} className="h-5 w-5" />
+                          </span>
+                        ) : (
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-muted"><BookOpen className="h-5 w-5 text-muted-foreground" /></span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{course?.title ?? r.courseId}</p>
+                          <p className="text-xs text-muted-foreground">Requested {formatDateTime(r.requestedAt)} · {r.model.replace('_', ' ')}</p>
+                        </div>
+                        <Badge variant="secondary" className={statusColor}>{r.status}</Badge>
+                        {r.status === 'approved' && (
+                          <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => useAppStore.getState().openCourse(r.courseId)}>
+                            <PlayCircle className="mr-1 h-3.5 w-3.5" /> Start
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Courses that are approved */}
+          <CoursesInProgressPanel />
+          <UpcomingSessionsPanel />
+        </div>
+
+        <div className="space-y-6">
+          <SkillRadarPanel />
+          <MyCertificatesPanel />
+          <InterviewReportsPanel />
+          <HelpSupportPanel />
+          <SettingsPanel />
+          <ActivityPanel />
+          <MiniAchievementsPanel />
+          <RecommendationsPanel />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CorporateQuickStats() {
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const completedLessons = useAppStore((s) => s.completedLessons);
+  const certificates = useAppStore((s) => s.certificates);
+  const myCerts = currentUserId ? certificates.filter((c) => c.userId === currentUserId) : [];
+  if (!user) return null;
+  const approvedCourseIds = user.approvedCourseIds ?? [];
+  const enrolledCourseIds = user.enrolledCourseIds ?? [];
+
+  const stats = [
+    { label: 'Courses', value: enrolledCourseIds.length, icon: BookOpen },
+    { label: 'Approved', value: approvedCourseIds.length, icon: CheckCircle2 },
+    { label: 'Lessons done', value: completedLessons.length, icon: PlayCircle },
+    { label: 'Certificates', value: myCerts.length, icon: Award },
+  ];
+  return (
+    <>
+      {stats.map((s) => (
+        <div key={s.label} className="rounded-xl bg-white/10 p-3 backdrop-blur">
+          <div className="flex items-center gap-2">
+            <s.icon className="h-4 w-4 text-white/70" />
+            <span className="text-xs font-medium text-white/70">{s.label}</span>
+          </div>
+          <p className="mt-1 text-2xl font-bold">{s.value}</p>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -266,6 +794,7 @@ function CoursesInProgressPanel() {
 
   if (!user) return null;
   const enrolledCourseIds = user.enrolledCourseIds ?? [];
+  const approvedCourseIds = user.approvedCourseIds ?? [];
   const enrolled = COURSES.filter((c) => enrolledCourseIds.includes(c.id));
 
   if (enrolled.length === 0) {
@@ -298,6 +827,7 @@ function CoursesInProgressPanel() {
           const done = lessons.filter((l) => completedLessons.includes(l.lessonId)).length;
           const pct = lessons.length ? Math.round((done / lessons.length) * 100) : 0;
           const next = lessons.find((l) => !completedLessons.includes(l.lessonId));
+          const isApproved = user.role === 'super_admin' || user.role === 'tutor' || approvedCourseIds.includes(c.id);
           return (
             <div key={c.id} className="rounded-lg border bg-card p-4">
               <div className="flex items-start gap-3">
@@ -310,17 +840,28 @@ function CoursesInProgressPanel() {
                     <span className="text-xs font-medium text-muted-foreground">{pct}%</span>
                   </div>
                   <p className="text-xs text-muted-foreground">{done}/{lessons.length} lessons · {c.duration}</p>
+                  {!isApproved && (
+                    <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
+                      <Lock className="h-3 w-3" /> Awaiting Super Admin approval to access content
+                    </div>
+                  )}
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                     <div className={`h-full bg-gradient-to-r ${c.gradient}`} style={{ width: `${pct}%` }} />
                   </div>
                   <div className="mt-3 flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      className="bg-emerald-600 text-white hover:bg-emerald-700"
-                      onClick={() => next ? openLesson(next.courseId, next.moduleId, next.lessonId) : openCourse(c.id)}
-                    >
-                      {next ? <><PlayCircle className="mr-1.5 h-3.5 w-3.5" /> Continue</> : <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Review</>}
-                    </Button>
+                    {isApproved ? (
+                      <Button
+                        size="sm"
+                        className="bg-emerald-600 text-white hover:bg-emerald-700"
+                        onClick={() => next ? openLesson(next.courseId, next.moduleId, next.lessonId) : openCourse(c.id)}
+                      >
+                        {next ? <><PlayCircle className="mr-1.5 h-3.5 w-3.5" /> Continue</> : <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Review</>}
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled className="opacity-60">
+                        <Lock className="mr-1.5 h-3.5 w-3.5" /> Locked
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => openCourse(c.id)}>Course page</Button>
                   </div>
                 </div>
@@ -390,7 +931,6 @@ function AssignmentsPanel() {
   if (!user) return null;
   const enrolledCourseIds = user.enrolledCourseIds ?? [];
   const myAssignments = assignments.filter((a) => {
-    // show assignments for courses the user is enrolled in
     return enrolledCourseIds.includes(a.courseId);
   }).slice(0, 3);
 
@@ -581,6 +1121,8 @@ function TutorDashboard() {
         <div className="space-y-6">
           <TutorEarningsPanel />
           <TutorProfilePanel />
+          <HelpSupportPanel />
+          <SettingsPanel />
         </div>
       </div>
     </div>
@@ -804,10 +1346,13 @@ function AdminDashboard() {
         <div className="space-y-6 lg:col-span-2">
           <AdminKpiPanel />
           <AdminPendingPanel />
+          <AdminSubscriptionPanel />
         </div>
         <div className="space-y-6">
           <AdminAuditPanel />
           <AdminIntegrationsPanel />
+          <HelpSupportPanel />
+          <SettingsPanel />
         </div>
       </div>
     </div>
@@ -818,15 +1363,17 @@ function AdminQuickStats() {
   const users = useAppStore((s) => s.users);
   const bookings = useAppStore((s) => s.bookings);
   const integrations = useAppStore((s) => s.integrations);
+  const subscriptionRequests = useAppStore((s) => s.subscriptionRequests);
   const candidates = users.filter((u) => u.role === 'candidate').length;
   const tutors = users.filter((u) => u.role === 'tutor').length;
+  const pendingSubs = subscriptionRequests.filter((r) => r.status === 'pending').length;
   const liveSessions = bookings.filter((b) => b.status === 'upcoming').length;
   const connectedIntegrations = integrations.filter((i) => i.connected).length;
 
   const stats = [
     { label: 'Candidates', value: candidates, icon: GraduationCap },
     { label: 'Tutors', value: tutors, icon: Users },
-    { label: 'Live sessions', value: liveSessions, icon: Video },
+    { label: 'Pending subs', value: pendingSubs, icon: Clock },
     { label: 'Integrations', value: `${connectedIntegrations}/${integrations.length}`, icon: Zap },
   ];
   return (
@@ -909,6 +1456,53 @@ function AdminPendingPanel() {
                 <Button size="sm" variant="outline" onClick={() => useAppStore.getState().openAdmin('tutors')}>Review</Button>
               </div>
             ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdminSubscriptionPanel() {
+  const subscriptionRequests = useAppStore((s) => s.subscriptionRequests);
+  const users = useAppStore((s) => s.users);
+  const approveSubscription = useAppStore((s) => s.approveSubscription);
+  const rejectSubscription = useAppStore((s) => s.rejectSubscription);
+  const pending = subscriptionRequests.filter((r) => r.status === 'pending');
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base"><Lock className="h-4 w-4 text-violet-600" /> Subscription Requests ({pending.length})</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {pending.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">No pending subscription requests.</p>
+        ) : (
+          <div className="space-y-2">
+            {pending.map((r) => {
+              const user = users.find((u) => u.id === r.userId);
+              const course = findCourse(r.courseId);
+              return (
+                <div key={r.id} className="flex items-center gap-3 rounded-lg border p-3">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback className={`bg-gradient-to-br ${user?.avatarColor ?? 'from-slate-500 to-slate-700'} text-white text-xs font-bold`}>
+                      {user?.name.charAt(0) ?? '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{user?.name} ({user?.role})</p>
+                    <p className="text-xs text-muted-foreground">{course?.title ?? r.courseId} · {r.model.replace('_', ' ')} · Requested {formatDateTime(r.requestedAt)}</p>
+                  </div>
+                  <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => approveSubscription(r.id)}>
+                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Approve
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-rose-600 hover:bg-rose-50" onClick={() => rejectSubscription(r.id)}>
+                    Reject
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>

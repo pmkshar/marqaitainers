@@ -186,7 +186,7 @@ export interface CourseEnrollmentMeta {
   lastAccessedAt: number;
 }
 
-export type RoleKey = 'super_admin' | 'tutor' | 'candidate' | 'guest';
+export type RoleKey = 'super_admin' | 'tutor' | 'candidate' | 'corporate' | 'guest';
 
 export type PermissionKey =
   | 'users.read' | 'users.write' | 'users.delete'
@@ -209,6 +209,17 @@ export interface Role {
   isSystem: boolean; // system roles cannot be deleted
 }
 
+export interface SubscriptionRequest {
+  id: string;
+  userId: string;
+  courseId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: number;
+  reviewedAt?: number;
+  reviewedBy?: string;
+  model: 'one_time' | 'subscription_monthly' | 'subscription_annual' | 'bundle' | 'free';
+}
+
 export interface User {
   id: string;
   name: string;
@@ -219,9 +230,13 @@ export interface User {
   createdAt: number;
   // tutor-only fields
   tutorProfile?: TutorProfile;
+  // corporate-only fields
+  orgName?: string;
   // admin-only fields
   permissions?: PermissionKey[]; // for custom admin sub-roles
   status: 'active' | 'suspended' | 'pending';
+  // subscription approval tracking
+  approvedCourseIds?: string[]; // courses approved by superadmin for this user
 }
 
 export interface TutorProfile {
@@ -488,7 +503,10 @@ export type ViewName =
   | 'members'
   | 'groups'
   | 'messages'
-  | 'features';      // WPLMS-parity features showcase
+  | 'features'       // WPLMS-parity features showcase
+  | 'resume_studio'  // AI-powered resume builder
+  | 'interview_reports' // mock interview results
+  | 'settings';      // user settings & preferences
 
 export interface View {
   name: ViewName;

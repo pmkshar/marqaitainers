@@ -18,6 +18,7 @@ import { Dashboard } from '@/components/dashboard';
 import {
   CalendarPage, MembersPage, GroupsPage, MessagesPage,
   CertificatesPage, AchievementsPage, FeaturesPage,
+  ResumeStudioPage, InterviewReportsPage, SettingsPage,
 } from '@/components/portal-pages';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { useAppStore } from '@/lib/store';
@@ -79,6 +80,9 @@ export default function Home() {
           {view.name === 'certificates' && <CertificatesPage />}
           {view.name === 'achievements' && <AchievementsPage />}
           {view.name === 'features' && <FeaturesPage />}
+          {view.name === 'resume_studio' && <ResumeStudioPage />}
+          {view.name === 'interview_reports' && <InterviewReportsPage />}
+          {view.name === 'settings' && <SettingsPage />}
         </ErrorBoundary>
       </main>
       <Footer />

@@ -9,6 +9,7 @@ import type {
   CertificateTemplate, CertificateElement,
   RegistrationFormConfig, RegistrationFormField,
   EmailSchedule, AnalyticsEvent, AnalyticsSummary, GdprExportBundle,
+  SubscriptionRequest,
 } from '@/lib/types';
 import {
   SEED_USERS, SEED_BOOKINGS, SEED_INTEGRATIONS, DEFAULT_ROLES, SEED_AUDIT_LOGS,
@@ -31,7 +32,7 @@ interface AppState {
   isMenuOpen: boolean;
   isAuthOpen: boolean;
   authMode: 'login' | 'register';
-  registerRole: 'candidate' | 'tutor';
+  registerRole: 'candidate' | 'tutor' | 'corporate';
 
   // Chat
   chatMessages: ChatMessage[];
@@ -72,6 +73,9 @@ interface AppState {
   analyticsEvents: AnalyticsEvent[];
   gdprBundles: GdprExportBundle[];
 
+  // ---- subscription approvals ----
+  subscriptionRequests: SubscriptionRequest[];
+
   // ---- selectors ----
   currentUser: () => User | null;
   hasPermission: (perm: PermissionKey) => boolean;
@@ -105,15 +109,18 @@ interface AppState {
   openMembers: () => void;
   openGroups: () => void;
   openMessages: (threadId?: string) => void;
+  openResumeStudio: () => void;
+  openInterviewReports: () => void;
+  openSettings: () => void;
   setTutorOpen: (open: boolean) => void;
   setMenuOpen: (open: boolean) => void;
   toggleMenu: () => void;
 
   // ---- auth ----
-  setAuthOpen: (open: boolean, mode?: 'login' | 'register', registerRole?: 'candidate' | 'tutor') => void;
+  setAuthOpen: (open: boolean, mode?: 'login' | 'register', registerRole?: 'candidate' | 'tutor' | 'corporate') => void;
   login: (email: string, role?: RoleKey) => boolean;
   loginAs: (userId: string) => void;
-  register: (name: string, email: string, role: 'candidate' | 'tutor', tutorHeadline?: string) => void;
+  register: (name: string, email: string, role: 'candidate' | 'tutor' | 'corporate', tutorHeadline?: string, orgName?: string) => void;
   logout: () => void;
 
   // ---- learning ----
@@ -185,6 +192,13 @@ interface AppState {
   acceptFriend: (friendId: string) => void;
   joinGroup: (groupId: string) => void;
   leaveGroup: (groupId: string) => void;
+
+  // ---- subscription approvals ----
+  requestSubscription: (courseId: string, model?: SubscriptionRequest['model']) => void;
+  approveSubscription: (requestId: string) => void;
+  rejectSubscription: (requestId: string) => void;
+  pendingSubscriptions: () => SubscriptionRequest[];
+  isCourseApproved: (userId: string, courseId: string) => boolean;
 
   // ---- advanced: certificate builder ----
   addCertTemplate: (tpl: Omit<CertificateTemplate, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -271,6 +285,9 @@ export const useAppStore = create<AppState>()(
       emailSchedules: SEED_EMAIL_SCHEDULES,
       analyticsEvents: SEED_ANALYTICS_EVENTS,
       gdprBundles: SEED_GDPR_BUNDLES,
+
+      // subscription approvals
+      subscriptionRequests: [],
 
       currentUser: () => {
         const id = get().currentUserId;
@@ -389,6 +406,9 @@ export const useAppStore = create<AppState>()(
       openMembers: () => set({ view: { name: 'members' }, isMenuOpen: false }),
       openGroups: () => set({ view: { name: 'groups' }, isMenuOpen: false }),
       openMessages: (threadId) => set({ view: { name: 'messages', dmThreadId: threadId }, isMenuOpen: false }),
+      openResumeStudio: () => set({ view: { name: 'resume_studio' }, isMenuOpen: false }),
+      openInterviewReports: () => set({ view: { name: 'interview_reports' }, isMenuOpen: false }),
+      openSettings: () => set({ view: { name: 'settings' }, isMenuOpen: false }),
       setTutorOpen: (open) => set({ isTutorOpen: open }),
       setMenuOpen: (open) => set({ isMenuOpen: open }),
       toggleMenu: () => set((s) => ({ isMenuOpen: !s.isMenuOpen })),
@@ -429,7 +449,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      register: (name, email, role, tutorHeadline) => {
+      register: (name, email, role, tutorHeadline, orgName) => {
         const id = `u-${role}-${Date.now()}`;
         const newUser: User = {
           id,
@@ -438,8 +458,10 @@ export const useAppStore = create<AppState>()(
           role,
           avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
           enrolledCourseIds: [],
+          approvedCourseIds: [],
           createdAt: Date.now(),
           status: role === 'tutor' ? 'pending' : 'active',
+          orgName: role === 'corporate' ? orgName : undefined,
           tutorProfile: role === 'tutor'
             ? {
                 headline: tutorHeadline || 'New tutor — pending review',
@@ -461,13 +483,16 @@ export const useAppStore = create<AppState>()(
           view: { name: 'dashboard' },
         }));
         get().logAction('Registered new account', `${name} (${role})`);
+        const welcomeBody = role === 'tutor'
+          ? 'Your tutor application is pending review by the Super Admin. You\'ll be notified once approved.'
+          : role === 'corporate'
+          ? 'Your corporate account is ready. Browse the catalog and request course subscriptions — the Super Admin will review and approve them.'
+          : 'Your candidate account is ready. Browse the catalog and enroll in your first course to get started.';
         get().pushNotification({
           userId: id,
           type: 'success',
-          title: `Welcome to Marq AI, ${name.split(' ')[0]}! 🎉`,
-          body: role === 'tutor'
-            ? 'Your tutor application is pending review by the Super Admin. You\'ll be notified once approved.'
-            : 'Your candidate account is ready. Browse the catalog and enroll in your first course to get started.',
+          title: `Welcome to Marq AI, ${name.split(' ')[0]}!`,
+          body: welcomeBody,
           link: 'dashboard',
         });
         if (role === 'tutor') {
@@ -477,6 +502,15 @@ export const useAppStore = create<AppState>()(
             title: `New tutor application — ${name}`,
             body: `${name} applied to teach on Marq AI. Review their application in the Admin Portal.`,
             link: 'admin:tutors',
+          });
+        }
+        if (role === 'corporate') {
+          get().pushNotification({
+            userId: 'u-admin-1',
+            type: 'system',
+            title: `New corporate registration — ${name}`,
+            body: `${name} from ${orgName || 'Unknown org'} registered a corporate account. Review and approve course subscriptions in the Admin Portal.`,
+            link: 'admin:users',
           });
         }
       },
@@ -953,6 +987,93 @@ export const useAppStore = create<AppState>()(
         }));
       },
 
+      // ---------- subscription approvals ----------
+      requestSubscription: (courseId, model = 'subscription_monthly') => {
+        const uid = get().currentUserId;
+        if (!uid) return;
+        const exists = get().subscriptionRequests.some(
+          (r) => r.userId === uid && r.courseId === courseId && r.status === 'pending'
+        );
+        if (exists) return; // already requested
+        const req: SubscriptionRequest = {
+          id: `sr-${Date.now()}`,
+          userId: uid,
+          courseId,
+          status: 'pending',
+          requestedAt: Date.now(),
+          model,
+        };
+        set((s) => ({ subscriptionRequests: [...s.subscriptionRequests, req] }));
+        get().logAction('Requested course subscription', courseId);
+        get().pushNotification({
+          userId: uid,
+          type: 'info',
+          title: 'Subscription requested',
+          body: `Your request to access this course has been sent to the Super Admin for approval. You'll be notified once approved.`,
+          link: 'dashboard',
+        });
+        get().pushNotification({
+          userId: 'u-admin-1',
+          type: 'system',
+          title: `New subscription request`,
+          body: `${get().currentUser()?.name} requested access to ${courseId}. Review in the Admin Portal.`,
+          link: 'admin:users',
+        });
+      },
+      approveSubscription: (requestId) => {
+        const req = get().subscriptionRequests.find((r) => r.id === requestId);
+        if (!req) return;
+        set((s) => ({
+          subscriptionRequests: s.subscriptionRequests.map((r) =>
+            r.id === requestId ? { ...r, status: 'approved' as const, reviewedAt: Date.now(), reviewedBy: s.currentUserId ?? 'u-admin-1' } : r
+          ),
+          users: s.users.map((u) =>
+            u.id === req.userId
+              ? {
+                  ...u,
+                  enrolledCourseIds: u.enrolledCourseIds.includes(req.courseId) ? u.enrolledCourseIds : [...u.enrolledCourseIds, req.courseId],
+                  approvedCourseIds: [...(u.approvedCourseIds ?? []), req.courseId].filter((v, i, a) => a.indexOf(v) === i),
+                }
+              : u
+          ),
+        }));
+        get().logAction('Approved subscription', `User ${req.userId} → Course ${req.courseId}`);
+        get().pushNotification({
+          userId: req.userId,
+          type: 'success',
+          title: 'Course access approved!',
+          body: `Your subscription has been approved. You can now access the course content.`,
+          link: `course:${req.courseId}`,
+        });
+      },
+      rejectSubscription: (requestId) => {
+        const req = get().subscriptionRequests.find((r) => r.id === requestId);
+        if (!req) return;
+        set((s) => ({
+          subscriptionRequests: s.subscriptionRequests.map((r) =>
+            r.id === requestId ? { ...r, status: 'rejected' as const, reviewedAt: Date.now(), reviewedBy: s.currentUserId ?? 'u-admin-1' } : r
+          ),
+        }));
+        get().logAction('Rejected subscription', `User ${req.userId} → Course ${req.courseId}`);
+        get().pushNotification({
+          userId: req.userId,
+          type: 'warning',
+          title: 'Course access not approved',
+          body: `Your subscription request was not approved. Please contact the Super Admin for more details.`,
+          link: 'dashboard',
+        });
+      },
+      pendingSubscriptions: () => get().subscriptionRequests.filter((r) => r.status === 'pending'),
+      isCourseApproved: (userId, courseId) => {
+        const user = get().users.find((u) => u.id === userId);
+        if (!user) return false;
+        // Super admins and tutors can always access
+        if (user.role === 'super_admin' || user.role === 'tutor') return true;
+        // For candidates and corporate: check approvedCourseIds
+        const approved = user.approvedCourseIds ?? [];
+        return approved.includes(courseId);
+      },
+
       // ---------- advanced: certificate builder ----------
       addCertTemplate: (tpl) => {
         const id = `tpl-${Date.now()}`;
@@ -1148,14 +1269,14 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'marq-ai-storage',
-      version: 4,
+      version: 5,
       skipHydration: true,
       storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : (undefined as never))),
       // Drop any persisted state from an older schema version. This prevents
       // crashes when the seeded data shape changes (e.g. new fields like
       // `enrolledCourseIds`, `tutorProfile`, `categoryIds`, etc.).
       migrate: (_persistedState, version) => {
-        if (version < 4) {
+        if (version < 5) {
           // Returning the seed-state shape triggers a fresh re-init.
           return {} as Partial<AppState>;
         }
@@ -1188,6 +1309,7 @@ export const useAppStore = create<AppState>()(
         registrationForms: s.registrationForms,
         emailSchedules: s.emailSchedules,
         analyticsEvents: s.analyticsEvents.slice(0, 2000),
+        subscriptionRequests: s.subscriptionRequests,
         gdprBundles: s.gdprBundles,
       }),
       // Defensive merge — never let a corrupted persisted state crash the app
@@ -1217,6 +1339,7 @@ export const useAppStore = create<AppState>()(
           messages: Array.isArray(p.messages) ? p.messages : current.messages,
           calendarEvents: Array.isArray(p.calendarEvents) ? p.calendarEvents : current.calendarEvents,
           friendships: Array.isArray(p.friendships) ? p.friendships : current.friendships,
+          subscriptionRequests: Array.isArray(p.subscriptionRequests) ? p.subscriptionRequests : [],
           completedLessons: Array.isArray(p.completedLessons) ? p.completedLessons : [],
           passedLessonTests: Array.isArray(p.passedLessonTests) ? p.passedLessonTests : [],
           chatMessages: Array.isArray(p.chatMessages) ? p.chatMessages : [],
