@@ -360,7 +360,7 @@ function renderInline(text: string): string {
 
 export function LessonView({ courseId, moduleId, lessonId }: { courseId: string; moduleId: string; lessonId: string }) {
   const result = findLesson(courseId, moduleId, lessonId);
-  const { openCourse, openQuiz, setTutorOpen, markLessonComplete, completedLessons, passedLessonTests, markLessonTestPassed } = useAppStore();
+  const { openCourse, openQuiz, setTutorOpen, markLessonComplete, completedLessons, passedLessonTests = [], markLessonTestPassed } = useAppStore();
   const [activeStep, setActiveStep] = useState(0);
   const stepRef = useRef<HTMLDivElement>(null);
 

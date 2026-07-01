@@ -38,6 +38,7 @@ interface AppState {
 
   // Learning
   completedLessons: string[];
+  passedLessonTests: string[];
 
   // Auth
   currentUserId: string | null;
@@ -117,6 +118,7 @@ interface AppState {
 
   // ---- learning ----
   markLessonComplete: (lessonId: string) => void;
+  markLessonTestPassed: (lessonId: string) => void;
 
   // ---- chat ----
   addMessage: (msg: ChatMessage) => void;
@@ -237,6 +239,7 @@ export const useAppStore = create<AppState>()(
 
       chatMessages: [],
       completedLessons: [],
+      passedLessonTests: [],
 
       currentUserId: null,
       users: SEED_USERS,
@@ -498,6 +501,13 @@ export const useAppStore = create<AppState>()(
             lessonId,
             text: 'Completed a lesson',
           });
+        }
+      },
+
+      markLessonTestPassed: (lessonId) => {
+        const alreadyPassed = get().passedLessonTests.includes(lessonId);
+        if (!alreadyPassed) {
+          set((s) => ({ passedLessonTests: [...s.passedLessonTests, lessonId] }));
         }
       },
 
@@ -1138,13 +1148,13 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'marq-ai-storage',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : (undefined as never))),
       // Drop any persisted state from an older schema version. This prevents
       // crashes when the seeded data shape changes (e.g. new fields like
       // `enrolledCourseIds`, `tutorProfile`, `categoryIds`, etc.).
       migrate: (_persistedState, version) => {
-        if (version < 3) {
+        if (version < 4) {
           // Returning the seed-state shape triggers a fresh re-init.
           return {} as Partial<AppState>;
         }
@@ -1152,6 +1162,7 @@ export const useAppStore = create<AppState>()(
       },
       partialize: (s) => ({
         completedLessons: s.completedLessons,
+        passedLessonTests: s.passedLessonTests,
         chatMessages: s.chatMessages.slice(-20),
         currentUserId: s.currentUserId,
         users: s.users,
@@ -1162,6 +1173,7 @@ export const useAppStore = create<AppState>()(
         notifications: s.notifications.slice(0, 100),
         activities: s.activities.slice(0, 100),
         certificates: s.certificates,
+        badges: s.badges,
         userBadges: s.userBadges,
         notes: s.notes,
         discussions: s.discussions,
@@ -1192,6 +1204,7 @@ export const useAppStore = create<AppState>()(
           notifications: Array.isArray(p.notifications) ? p.notifications : current.notifications,
           activities: Array.isArray(p.activities) ? p.activities : current.activities,
           certificates: Array.isArray(p.certificates) ? p.certificates : current.certificates,
+          badges: Array.isArray(p.badges) && p.badges.length > 0 ? p.badges : current.badges,
           userBadges: Array.isArray(p.userBadges) ? p.userBadges : current.userBadges,
           notes: Array.isArray(p.notes) ? p.notes : current.notes,
           discussions: Array.isArray(p.discussions) ? p.discussions : current.discussions,
@@ -1202,6 +1215,7 @@ export const useAppStore = create<AppState>()(
           calendarEvents: Array.isArray(p.calendarEvents) ? p.calendarEvents : current.calendarEvents,
           friendships: Array.isArray(p.friendships) ? p.friendships : current.friendships,
           completedLessons: Array.isArray(p.completedLessons) ? p.completedLessons : [],
+          passedLessonTests: Array.isArray(p.passedLessonTests) ? p.passedLessonTests : [],
           chatMessages: Array.isArray(p.chatMessages) ? p.chatMessages : [],
         };
       },

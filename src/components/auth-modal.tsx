@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { GraduationCap, Sparkles, Users, ShieldCheck, X, ArrowRight, Loader2 } from 'lucide-react';
+import { GraduationCap, Sparkles, Users, ShieldCheck, X, ArrowRight, Loader2, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,8 @@ export function AuthModal() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [tutorHeadline, setTutorHeadline] = useState('');
-  const [localRole, setLocalRole] = useState<'candidate' | 'tutor'>(registerRole);
+  const [orgName, setOrgName] = useState('');
+  const [localRole, setLocalRole] = useState<'candidate' | 'tutor' | 'corporate'>(registerRole);
   const [loading, setLoading] = useState(false);
 
   const close = () => setAuthOpen(false);
@@ -37,16 +38,40 @@ export function AuthModal() {
     }, 400);
   };
 
+  const handleCorporateLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      // Corporate users login as admin (org admin) for demo
+      const ok = login(email || 'admin@marqai.dev');
+      if (!ok) {
+        loginAs('u-admin-1');
+      }
+      setLoading(false);
+      close();
+    }, 400);
+  };
+
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setTimeout(() => {
-      register(
-        name || 'New Learner',
-        email || `learner-${Date.now()}@example.com`,
-        localRole,
-        tutorHeadline
-      );
+      if (localRole === 'corporate') {
+        // Register corporate account as super_admin with org name
+        register(
+          name || 'Organization Admin',
+          email || `org-${Date.now()}@example.com`,
+          'candidate', // starts as candidate, admin promotes
+          orgName ? `Organization: ${orgName}` : undefined
+        );
+      } else {
+        register(
+          name || 'New Learner',
+          email || `learner-${Date.now()}@example.com`,
+          localRole,
+          tutorHeadline
+        );
+      }
       setLoading(false);
       close();
     }, 500);
@@ -80,6 +105,8 @@ export function AuthModal() {
               ? 'Sign in to access your courses, AI tutor, and bookings.'
               : localRole === 'tutor'
               ? 'Apply to teach on MarqAI. Admin approval required before going live.'
+              : localRole === 'corporate'
+              ? 'Register your organization for team training, analytics, and admin controls.'
               : 'Register free to start learning, take tests, and book human tutors.'}
           </p>
         </div>
@@ -114,16 +141,49 @@ export function AuthModal() {
                 </Button>
               </form>
 
+              {/* Corporate Login Section */}
+              <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                  <span className="text-sm font-medium">Corporate / Organization Login</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mb-2">
+                  Team leads and org admins can manage training, track progress, and assign courses to teams.
+                </p>
+                <form onSubmit={handleCorporateLogin} className="space-y-2">
+                  <Input
+                    type="email" placeholder="org-admin@company.com" value={email}
+                    onChange={(e) => setEmail(e.target.value)} autoComplete="email"
+                    className="h-8 text-sm"
+                  />
+                  <Input
+                    type="password" placeholder="••••••••" value={password}
+                    onChange={(e) => setPassword(e.target.value)} autoComplete="current-password"
+                    className="h-8 text-sm"
+                  />
+                  <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 h-8 text-sm">
+                    {loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Building2 className="mr-2 h-3.5 w-3.5" />}
+                    Corporate Sign in
+                  </Button>
+                </form>
+              </div>
+
               <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
                 <div className="relative flex justify-center"><span className="bg-card px-2 text-xs uppercase tracking-wider text-muted-foreground">Or quick demo login</span></div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <QuickLogin
                   icon={ShieldCheck}
                   label="Admin"
                   color="from-rose-500 to-pink-600"
+                  onClick={() => quickLogin('u-admin-1')}
+                />
+                <QuickLogin
+                  icon={Building2}
+                  label="Corporate"
+                  color="from-violet-500 to-purple-600"
                   onClick={() => quickLogin('u-admin-1')}
                 />
                 <QuickLogin
@@ -146,7 +206,7 @@ export function AuthModal() {
 
             {/* REGISTER */}
             <TabsContent value="register" className="mt-4 space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setLocalRole('candidate')}
@@ -155,8 +215,8 @@ export function AuthModal() {
                   }`}
                 >
                   <GraduationCap className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-sm font-medium">I&apos;m a Candidate</span>
-                  <span className="text-[10px] text-muted-foreground">Learn software engineering</span>
+                  <span className="text-sm font-medium">Candidate</span>
+                  <span className="text-[10px] text-muted-foreground">Learn software</span>
                 </button>
                 <button
                   type="button"
@@ -166,8 +226,19 @@ export function AuthModal() {
                   }`}
                 >
                   <Users className="h-5 w-5 text-sky-600 dark:text-sky-400" />
-                  <span className="text-sm font-medium">I&apos;m a Tutor</span>
+                  <span className="text-sm font-medium">Tutor</span>
                   <span className="text-[10px] text-muted-foreground">Teach on MarqAI</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocalRole('corporate')}
+                  className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors ${
+                    localRole === 'corporate' ? 'border-violet-500 bg-violet-500/5' : 'border-border hover:bg-muted/50'
+                  }`}
+                >
+                  <Building2 className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                  <span className="text-sm font-medium">Corporate</span>
+                  <span className="text-[10px] text-muted-foreground">Train your team</span>
                 </button>
               </div>
 
@@ -196,13 +267,28 @@ export function AuthModal() {
                     </p>
                   </div>
                 )}
+                {localRole === 'corporate' && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="orgname">Organization / Company name</Label>
+                    <Input
+                      id="orgname" placeholder="e.g. Acme Technologies Pvt. Ltd."
+                      value={orgName} onChange={(e) => setOrgName(e.target.value)}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Register your organization to manage team training, assign courses, and track progress across your teams.
+                      Our team will verify and activate your corporate account within 24 hours.
+                    </p>
+                  </div>
+                )}
                 <Button type="submit" disabled={loading} className={`w-full ${
-                  localRole === 'tutor'
+                  localRole === 'corporate'
+                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700'
+                    : localRole === 'tutor'
                     ? 'bg-gradient-to-r from-sky-500 to-cyan-600 text-white hover:from-sky-600 hover:to-cyan-700'
                     : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700'
                 }`}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {localRole === 'tutor' ? 'Apply to Teach' : 'Create account'} <ArrowRight className="ml-2 h-4 w-4" />
+                  {localRole === 'corporate' ? 'Register Organization' : localRole === 'tutor' ? 'Apply to Teach' : 'Create account'} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </form>
               <p className="text-center text-[10px] text-muted-foreground">
