@@ -39,6 +39,11 @@ export default function Home() {
     }
   }, []);
 
+  // Rehydrate Zustand persist store manually (skipHydration is enabled to prevent race conditions)
+  useEffect(() => {
+    useAppStore.persist.rehydrate();
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <Navbar />

@@ -1149,6 +1149,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'marq-ai-storage',
       version: 4,
+      skipHydration: true,
       storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : (undefined as never))),
       // Drop any persisted state from an older schema version. This prevents
       // crashes when the seeded data shape changes (e.g. new fields like
