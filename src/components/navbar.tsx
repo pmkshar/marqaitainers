@@ -10,18 +10,19 @@ import { COURSES } from '@/lib/courses';
 import { NotificationsBell } from './notifications-bell';
 
 export function Navbar() {
-  const {
-    view, isMenuOpen, toggleMenu, goHome, openCourse,
-    setTutorOpen, openPricing, openTutors, openAdmin, openTutorPortal, openMyLearning, openDashboard, openFeatures,
-    currentUser, logout, setAuthOpen,
-  } = useAppStore();
-  const user = currentUser();
+  const view = useAppStore((s) => s.view);
+  const isMenuOpen = useAppStore((s) => s.isMenuOpen);
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+
+  const store = useAppStore.getState;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <button
-          onClick={goHome}
+          onClick={() => store().goHome()}
           className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
           aria-label="Go to homepage"
         >
@@ -39,7 +40,7 @@ export function Navbar() {
         {/* Desktop nav */}
         <nav className="hidden items-center gap-1 md:flex">
           <button
-            onClick={goHome}
+            onClick={() => store().goHome()}
             className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               view.name === 'home' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
@@ -54,7 +55,7 @@ export function Navbar() {
               {COURSES.map((c) => (
                 <button
                   key={c.id}
-                  onClick={() => openCourse(c.id)}
+                  onClick={() => store().openCourse(c.id)}
                   className="flex w-full items-start gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-accent"
                 >
                   <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br ${c.gradient} text-white`}>
@@ -69,25 +70,25 @@ export function Navbar() {
             </div>
           </div>
           <button
-            onClick={openTutors}
+            onClick={() => store().openTutors()}
             className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${view.name === 'tutors' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Human Tutors
           </button>
           <button
-            onClick={openPricing}
+            onClick={() => store().openPricing()}
             className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${view.name === 'pricing' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Pricing
           </button>
           <button
-            onClick={openFeatures}
+            onClick={() => store().openFeatures()}
             className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${view.name === 'features' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Features
           </button>
           <button
-            onClick={() => setTutorOpen(true)}
+            onClick={() => store().setTutorOpen(true)}
             className="ml-2 inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <MessageCircle className="h-4 w-4" />
@@ -99,7 +100,7 @@ export function Navbar() {
           {user && (
             <>
               <Button
-                onClick={openDashboard}
+                onClick={() => store().openDashboard()}
                 variant="ghost"
                 size="sm"
                 className="hidden md:inline-flex"
@@ -130,32 +131,32 @@ export function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={openDashboard}>
+                  <DropdownMenuItem onClick={() => store().openDashboard()}>
                     <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
                   </DropdownMenuItem>
                   {user.role === 'candidate' && (
-                    <DropdownMenuItem onClick={openMyLearning}>
+                    <DropdownMenuItem onClick={() => store().openMyLearning()}>
                       <BookOpen className="mr-2 h-4 w-4" /> My Learning
                     </DropdownMenuItem>
                   )}
                   {user.role === 'tutor' && (
-                    <DropdownMenuItem onClick={openTutorPortal}>
+                    <DropdownMenuItem onClick={() => store().openTutorPortal()}>
                       <LayoutDashboard className="mr-2 h-4 w-4" /> Tutor Portal
                     </DropdownMenuItem>
                   )}
                   {user.role === 'super_admin' && (
-                    <DropdownMenuItem onClick={() => openAdmin('dashboard')}>
+                    <DropdownMenuItem onClick={() => store().openAdmin('dashboard')}>
                       <ShieldCheck className="mr-2 h-4 w-4" /> Admin Portal
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={openFeatures}>
+                  <DropdownMenuItem onClick={() => store().openFeatures()}>
                     <Grid3x3 className="mr-2 h-4 w-4" /> Features
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTutorOpen(true)}>
+                  <DropdownMenuItem onClick={() => store().setTutorOpen(true)}>
                     <Sparkles className="mr-2 h-4 w-4" /> Ask AI Tutor
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="text-rose-600 dark:text-rose-400">
+                  <DropdownMenuItem onClick={() => store().logout()} className="text-rose-600 dark:text-rose-400">
                     <LogOut className="mr-2 h-4 w-4" /> Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -164,7 +165,7 @@ export function Navbar() {
           )}
           {!user && (
             <Button
-              onClick={() => setAuthOpen(true, 'login')}
+              onClick={() => store().setAuthOpen(true, 'login')}
               variant="outline"
               size="sm"
               className="hidden sm:inline-flex"
@@ -173,7 +174,7 @@ export function Navbar() {
             </Button>
           )}
           <Button
-            onClick={() => setTutorOpen(true)}
+            onClick={() => store().setTutorOpen(true)}
             className="hidden bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm hover:from-emerald-600 hover:to-teal-700 sm:inline-flex"
             size="sm"
           >
@@ -181,7 +182,7 @@ export function Navbar() {
             Ask AI
           </Button>
           <button
-            onClick={toggleMenu}
+            onClick={() => store().toggleMenu()}
             className="grid h-10 w-10 place-items-center rounded-md text-foreground md:hidden"
             aria-label="Toggle menu"
           >
@@ -194,10 +195,10 @@ export function Navbar() {
       {isMenuOpen && (
         <div className="border-t bg-background md:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
-            <button onClick={goHome} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Home</button>
+            <button onClick={() => store().goHome()} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Home</button>
             <p className="px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Courses</p>
             {COURSES.map((c) => (
-              <button key={c.id} onClick={() => openCourse(c.id)} className="flex items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-accent">
+              <button key={c.id} onClick={() => store().openCourse(c.id)} className="flex items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-accent">
                 <span className={`grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br ${c.gradient} text-white`}>
                   <CourseIcon name={c.icon} />
                 </span>
@@ -205,10 +206,10 @@ export function Navbar() {
                 <Badge variant="secondary" className="ml-auto text-xs">{c.level}</Badge>
               </button>
             ))}
-            <button onClick={openTutors} className="mt-1 rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Human Tutors</button>
-            <button onClick={openPricing} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Pricing</button>
-            <button onClick={openFeatures} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Features</button>
-            <button onClick={() => setTutorOpen(true)} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">AI Tutor</button>
+            <button onClick={() => store().openTutors()} className="mt-1 rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Human Tutors</button>
+            <button onClick={() => store().openPricing()} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Pricing</button>
+            <button onClick={() => store().openFeatures()} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">Features</button>
+            <button onClick={() => store().setTutorOpen(true)} className="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent">AI Tutor</button>
             <div className="mt-2 border-t pt-3">
               {user ? (
                 <>
@@ -221,14 +222,14 @@ export function Navbar() {
                       <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
                     </div>
                   </div>
-                  <button onClick={openDashboard} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">Dashboard</button>
-                  {user.role === 'candidate' && <button onClick={openMyLearning} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">My Learning</button>}
-                  {user.role === 'tutor' && <button onClick={openTutorPortal} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">Tutor Dashboard</button>}
-                  {user.role === 'super_admin' && <button onClick={() => openAdmin('dashboard')} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">Admin Portal</button>}
-                  <button onClick={logout} className="w-full rounded-md px-3 py-2 text-left text-sm text-rose-600 hover:bg-accent">Sign out</button>
+                  <button onClick={() => store().openDashboard()} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">Dashboard</button>
+                  {user.role === 'candidate' && <button onClick={() => store().openMyLearning()} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">My Learning</button>}
+                  {user.role === 'tutor' && <button onClick={() => store().openTutorPortal()} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">Tutor Dashboard</button>}
+                  {user.role === 'super_admin' && <button onClick={() => store().openAdmin('dashboard')} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent">Admin Portal</button>}
+                  <button onClick={() => store().logout()} className="w-full rounded-md px-3 py-2 text-left text-sm text-rose-600 hover:bg-accent">Sign out</button>
                 </>
               ) : (
-                <Button onClick={() => setAuthOpen(true, 'login')} className="w-full">
+                <Button onClick={() => store().setAuthOpen(true, 'login')} className="w-full">
                   <LogIn className="mr-1.5 h-4 w-4" /> Sign in / Register
                 </Button>
               )}

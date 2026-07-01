@@ -49,7 +49,11 @@ function BackToDashboard() {
 // ============================================================
 
 export function CalendarPage() {
-  const events = useAppStore((s) => s.myCalendar());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const calendarEvents = useAppStore((s) => s.calendarEvents);
+  const events = currentUserId
+    ? calendarEvents.filter((e) => e.userId === currentUserId).sort((a, b) => a.startsAt - b.startsAt)
+    : [];
   const openTutors = useAppStore((s) => s.openTutors);
 
   // Group events by date
@@ -145,8 +149,9 @@ export function CalendarPage() {
 // ============================================================
 
 export function MembersPage() {
+  const currentUserId = useAppStore((s) => s.currentUserId);
   const users = useAppStore((s) => s.users);
-  const currentUser = useAppStore((s) => s.currentUser())!;
+  const currentUser = currentUserId ? users.find((u) => u.id === currentUserId)! : undefined!;
   const friendships = useAppStore((s) => s.friendships);
   const addFriend = useAppStore((s) => s.addFriend);
   const openMessages = useAppStore((s) => s.openMessages);
@@ -254,8 +259,9 @@ export function MembersPage() {
 
 export function GroupsPage() {
   const groups = useAppStore((s) => s.groups);
+  const currentUserId = useAppStore((s) => s.currentUserId);
   const users = useAppStore((s) => s.users);
-  const currentUser = useAppStore((s) => s.currentUser())!;
+  const currentUser = currentUserId ? users.find((u) => u.id === currentUserId)! : undefined!;
   const joinGroup = useAppStore((s) => s.joinGroup);
   const leaveGroup = useAppStore((s) => s.leaveGroup);
   const openMembers = useAppStore((s) => s.openMembers);
@@ -335,8 +341,9 @@ export function GroupsPage() {
 // ============================================================
 
 export function MessagesPage() {
-  const currentUser = useAppStore((s) => s.currentUser())!;
+  const currentUserId = useAppStore((s) => s.currentUserId);
   const users = useAppStore((s) => s.users);
+  const currentUser = currentUserId ? users.find((u) => u.id === currentUserId)! : undefined!;
   const messages = useAppStore((s) => s.messages);
   const friendships = useAppStore((s) => s.friendships);
   const sendDm = useAppStore((s) => s.sendDm);
@@ -511,7 +518,9 @@ export function MessagesPage() {
 // ============================================================
 
 export function CertificatesPage() {
-  const certs = useAppStore((s) => s.myCertificates());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const certificates = useAppStore((s) => s.certificates);
+  const certs = currentUserId ? certificates.filter((c) => c.userId === currentUserId) : [];
 
   return (
     <div className="bg-background">
@@ -587,7 +596,14 @@ export function CertificatesPage() {
 // ============================================================
 
 export function AchievementsPage() {
-  const myBadges = useAppStore((s) => s.myBadges());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const userBadges = useAppStore((s) => s.userBadges);
+  const badgeList = useAppStore((s) => s.badges);
+  const myBadges = currentUserId
+    ? userBadges.filter((ub) => ub.userId === currentUserId)
+        .map((ub) => { const badge = badgeList.find((b) => b.slug === ub.badgeSlug); return { ...ub, badge: badge! }; })
+        .filter((ub) => ub.badge)
+    : [];
   const allBadges = useAppStore((s) => s.badges);
   const earnedSlugs = new Set(myBadges.map((b) => b.badgeSlug));
 

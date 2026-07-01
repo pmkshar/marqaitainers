@@ -36,9 +36,11 @@ function notifIcon(n: AppNotification) {
 }
 
 export function NotificationsBell() {
-  const user = useAppStore((s) => s.currentUser());
-  const unreadCount = useAppStore((s) => s.unreadNotificationCount());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
   const notifications = useAppStore((s) => s.notifications);
+  const unreadCount = currentUserId ? notifications.filter((n) => n.userId === currentUserId && !n.read).length : 0;
   const markRead = useAppStore((s) => s.markNotificationRead);
   const markAllRead = useAppStore((s) => s.markAllNotificationsRead);
   const clearNotification = useAppStore((s) => s.clearNotification);

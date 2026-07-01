@@ -44,7 +44,9 @@ function formatDateTime(ts: number) {
 // ============================================================
 
 export function Dashboard() {
-  const user = useAppStore((s) => s.currentUser());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
   const goHome = useAppStore((s) => s.goHome);
 
   if (!user) {
@@ -83,7 +85,9 @@ export function Dashboard() {
 // ============================================================
 
 function DashboardHeader() {
-  const user = useAppStore((s) => s.currentUser());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
   const completedLessons = useAppStore((s) => s.completedLessons);
   if (!user) return null;
 
@@ -190,10 +194,19 @@ function CandidateDashboard() {
 }
 
 function CandidateQuickStats() {
-  const user = useAppStore((s) => s.currentUser());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
   const completedLessons = useAppStore((s) => s.completedLessons);
-  const myBadges = useAppStore((s) => s.myBadges());
-  const myCerts = useAppStore((s) => s.myCertificates());
+  const userBadges = useAppStore((s) => s.userBadges);
+  const badges = useAppStore((s) => s.badges);
+  const myBadges = currentUserId
+    ? userBadges.filter((ub) => ub.userId === currentUserId)
+        .map((ub) => { const badge = badges.find((b) => b.slug === ub.badgeSlug); return { ...ub, badge: badge! }; })
+        .filter((ub) => ub.badge)
+    : [];
+  const certificates = useAppStore((s) => s.certificates);
+  const myCerts = currentUserId ? certificates.filter((c) => c.userId === currentUserId) : [];
   const bookings = useAppStore((s) => s.bookings);
   if (!user) return null;
   const enrolledCourseIds = user.enrolledCourseIds ?? [];
@@ -244,7 +257,9 @@ function QuickAction({ icon: Icon, label, desc, color, onClick }: {
 }
 
 function CoursesInProgressPanel() {
-  const user = useAppStore((s) => s.currentUser());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
   const completedLessons = useAppStore((s) => s.completedLessons);
   const openLesson = useAppStore((s) => s.openLesson);
   const openCourse = useAppStore((s) => s.openCourse);
@@ -319,9 +334,10 @@ function CoursesInProgressPanel() {
 }
 
 function UpcomingSessionsPanel() {
-  const user = useAppStore((s) => s.currentUser());
-  const bookings = useAppStore((s) => s.bookings);
+  const currentUserId = useAppStore((s) => s.currentUserId);
   const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const bookings = useAppStore((s) => s.bookings);
   if (!user) return null;
   const myBookings = bookings.filter((b) => b.candidateId === user.id && b.status === 'upcoming');
 
@@ -366,7 +382,9 @@ function UpcomingSessionsPanel() {
 }
 
 function AssignmentsPanel() {
-  const user = useAppStore((s) => s.currentUser());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
   const assignments = useAppStore((s) => s.assignments);
 
   if (!user) return null;
@@ -415,7 +433,11 @@ function AssignmentsPanel() {
 }
 
 function ActivityPanel() {
-  const activities = useAppStore((s) => s.myActivities(8));
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const activities = useAppStore((s) => s.activities);
+  const myActivities = currentUserId
+    ? activities.filter((a) => a.userId === currentUserId).sort((a, b) => b.createdAt - a.createdAt).slice(0, 8)
+    : [];
 
   return (
     <Card>
@@ -424,11 +446,11 @@ function ActivityPanel() {
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[260px] pr-3">
-          {activities.length === 0 ? (
+          {myActivities.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">No activity yet. Start learning to see your timeline here.</p>
           ) : (
             <ol className="relative space-y-3 border-l border-border pl-4">
-              {activities.map((a) => (
+              {myActivities.map((a) => (
                 <li key={a.id} className="relative">
                   <span className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
                   <p className="text-sm">{a.text}</p>
@@ -444,8 +466,16 @@ function ActivityPanel() {
 }
 
 function MiniAchievementsPanel() {
-  const myBadges = useAppStore((s) => s.myBadges());
-  const myCerts = useAppStore((s) => s.myCertificates());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const userBadges = useAppStore((s) => s.userBadges);
+  const badges = useAppStore((s) => s.badges);
+  const myBadges = currentUserId
+    ? userBadges.filter((ub) => ub.userId === currentUserId)
+        .map((ub) => { const badge = badges.find((b) => b.slug === ub.badgeSlug); return { ...ub, badge: badge! }; })
+        .filter((ub) => ub.badge)
+    : [];
+  const certificates = useAppStore((s) => s.certificates);
+  const myCerts = currentUserId ? certificates.filter((c) => c.userId === currentUserId) : [];
 
   return (
     <Card>
@@ -498,7 +528,9 @@ function MiniAchievementsPanel() {
 }
 
 function RecommendationsPanel() {
-  const user = useAppStore((s) => s.currentUser());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
   const openCourse = useAppStore((s) => s.openCourse);
   if (!user) return null;
   const enrolledCourseIds = user.enrolledCourseIds ?? [];
@@ -556,7 +588,9 @@ function TutorDashboard() {
 }
 
 function TutorQuickStats() {
-  const user = useAppStore((s) => s.currentUser());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
   const bookings = useAppStore((s) => s.bookings);
   if (!user) return null;
   const myUpcoming = bookings.filter((b) => b.tutorId === user.id && b.status === 'upcoming');
@@ -587,9 +621,10 @@ function TutorQuickStats() {
 }
 
 function TutorSessionsPanel() {
-  const user = useAppStore((s) => s.currentUser());
-  const bookings = useAppStore((s) => s.bookings);
+  const currentUserId = useAppStore((s) => s.currentUserId);
   const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const bookings = useAppStore((s) => s.bookings);
   if (!user) return null;
   const myUpcoming = bookings.filter((b) => b.tutorId === user.id && b.status === 'upcoming').slice(0, 5);
 
@@ -630,9 +665,10 @@ function TutorSessionsPanel() {
 }
 
 function TutorStudentsPanel() {
-  const user = useAppStore((s) => s.currentUser());
-  const bookings = useAppStore((s) => s.bookings);
+  const currentUserId = useAppStore((s) => s.currentUserId);
   const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
+  const bookings = useAppStore((s) => s.bookings);
   if (!user) return null;
   const myBookings = bookings.filter((b) => b.tutorId === user.id);
   const studentIds = Array.from(new Set(myBookings.map((b) => b.candidateId)));
@@ -671,7 +707,9 @@ function TutorStudentsPanel() {
 }
 
 function TutorEarningsPanel() {
-  const user = useAppStore((s) => s.currentUser());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
   const bookings = useAppStore((s) => s.bookings);
   if (!user) return null;
   const completed = bookings.filter((b) => b.tutorId === user.id && b.status === 'completed');
@@ -707,7 +745,9 @@ function TutorEarningsPanel() {
 }
 
 function TutorProfilePanel() {
-  const user = useAppStore((s) => s.currentUser());
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const users = useAppStore((s) => s.users);
+  const user = currentUserId ? users.find((u) => u.id === currentUserId) ?? null : null;
   if (!user) return null;
   const tp = user.tutorProfile;
   if (!tp) return null;
