@@ -13,7 +13,9 @@ import { useAppStore } from '@/lib/store';
 import { SEED_USERS } from '@/lib/seed-data';
 
 export function AuthModal() {
-  const { isAuthOpen, authMode, registerRole, setAuthOpen, login, register, loginAs } = useAppStore();
+  const isAuthOpen = useAppStore((s) => s.isAuthOpen);
+  const authMode = useAppStore((s) => s.authMode);
+  const registerRole = useAppStore((s) => s.registerRole);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -22,16 +24,16 @@ export function AuthModal() {
   const [localRole, setLocalRole] = useState<'candidate' | 'tutor' | 'corporate'>(registerRole);
   const [loading, setLoading] = useState(false);
 
-  const close = () => setAuthOpen(false);
+  const close = () => useAppStore.getState().setAuthOpen(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setTimeout(() => {
-      const ok = login(email || 'admin@marqai.dev');
+      const store = useAppStore.getState();
+      const ok = store.login(email || 'admin@marqai.dev');
       if (!ok) {
-        // fall back to admin demo login
-        loginAs('u-admin-1');
+        store.loginAs('u-admin-1');
       }
       setLoading(false);
       close();
@@ -42,10 +44,10 @@ export function AuthModal() {
     e.preventDefault();
     setLoading(true);
     setTimeout(() => {
-      // Corporate users login as admin (org admin) for demo
-      const ok = login(email || 'admin@marqai.dev');
+      const store = useAppStore.getState();
+      const ok = store.login(email || 'admin@marqai.dev');
       if (!ok) {
-        loginAs('u-admin-1');
+        store.loginAs('u-admin-1');
       }
       setLoading(false);
       close();
@@ -56,16 +58,16 @@ export function AuthModal() {
     e.preventDefault();
     setLoading(true);
     setTimeout(() => {
+      const store = useAppStore.getState();
       if (localRole === 'corporate') {
-        // Register corporate account as super_admin with org name
-        register(
+        store.register(
           name || 'Organization Admin',
           email || `org-${Date.now()}@example.com`,
-          'candidate', // starts as candidate, admin promotes
+          'candidate',
           orgName ? `Organization: ${orgName}` : undefined
         );
       } else {
-        register(
+        store.register(
           name || 'New Learner',
           email || `learner-${Date.now()}@example.com`,
           localRole,
@@ -78,8 +80,7 @@ export function AuthModal() {
   };
 
   const quickLogin = (userId: string) => {
-    loginAs(userId);
-    close();
+    useAppStore.getState().loginAs(userId);
   };
 
   return (
@@ -112,10 +113,10 @@ export function AuthModal() {
         </div>
 
         <div className="p-6">
-          <Tabs value={authMode} onValueChange={(v) => setAuthOpen(true, v as 'login' | 'register', localRole)}>
+          <Tabs value={authMode} onValueChange={(v) => useAppStore.getState().setAuthOpen(true, v as 'login' | 'register', localRole)}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login" onClick={() => setAuthOpen(true, 'login')}>Sign In</TabsTrigger>
-              <TabsTrigger value="register" onClick={() => setAuthOpen(true, 'register')}>Register</TabsTrigger>
+              <TabsTrigger value="login" onClick={() => useAppStore.getState().setAuthOpen(true, 'login')}>Sign In</TabsTrigger>
+              <TabsTrigger value="register" onClick={() => useAppStore.getState().setAuthOpen(true, 'register')}>Register</TabsTrigger>
             </TabsList>
 
             {/* LOGIN */}
