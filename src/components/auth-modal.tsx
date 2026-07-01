@@ -80,7 +80,11 @@ export function AuthModal() {
   };
 
   const quickLogin = (userId: string) => {
-    useAppStore.getState().loginAs(userId);
+    // Use setTimeout to ensure the state change persists before the dialog closes
+    // and triggers any re-renders that might reset the Zustand persist
+    setTimeout(() => {
+      useAppStore.getState().loginAs(userId);
+    }, 0);
   };
 
   return (
